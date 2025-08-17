@@ -1,18 +1,47 @@
 import os
 from typing import Optional
+from openai import OpenAI
+
+SYSTEM_EN = (
+    "You are a banking cybersecurity educator for the public. "
+    "Hard rules: Never ask for or process OTP, PIN, passwords, or personal account data. "
+    "Never provide balance, transfer, or investment advice—always redirect to the user's bank. "
+    "Keep answers short, factual, and actionable. If unsure, recommend contacting the bank via official channels."
+)
+
+SYSTEM_MY = (
+    "သင်သည် အများပြည်သူအတွက် ဘဏ်ဆိုက်ဘာလုံခြုံရေး ဆိုင်ရာ ပညာပေးအကြံပေးရှင်ဖြစ်သည်။ "
+    "စည်းကမ်းချက်များ: OTP, PIN, စကားဝှက် သို့မဟုတ် ကိုယ်ရေးအကောင့်အချက်အလက်များကို မတောင်းပါနှင့်၊ မကိုင်တွယ်ပါနှင့်။ "
+    "လက်ကျန်ငွေ၊ ငွေလွဲ သို့မဟုတ် ရင်းနှီးမြှုပ်နှံအကြံပြု မပေးပါနှင့်—အမြဲ တရားဝင်လမ်းကြောင်းမှ ဘဏ်ကို ဆက်သွယ်ရန် ညွှန်ပြပါ။ "
+    "ဖြေကြားချက်များကို တိုတောင်း၊ သက်ဆိုင်၍ လုပ်ဆောင်နိုင်ရန် အထောက်အကူဖြစ်သည့်အချက်များသာ ပေးပါ။ မသေချာပါက တရားဝင်လမ်းကြောင်းမှ ဘဏ်ကို ဆက်သွယ်ရန် အကြံပြုပါ။"
+)
 
 class AIFallback:
     def __init__(self):
         self.enabled = bool(os.getenv("OPENAI_API_KEY"))
+        self.client = OpenAI() if self.enabled else None
+        # Cost-efficient default; upgrade to 'gpt-5' if you have access
+        self.model = os.getenv("AI_MODEL", "gpt-4o-mini")
 
     async def answer(self, user_text: str, language: str) -> Optional[str]:
-        if not self.enabled:
+        if not self.enabled or not self.client:
             return None
-        # Pseudo-LLM call (replace with real OpenAI SDK when you’re ready)
-        # Keep responses safe & generic.
-        system = ("You are a banking cybersecurity educator. "
-                  "Never request OTPs/links. If user asks about personal accounts, "
-                  "redirect them to their bank. Answer in language='{lang}'.").format(lang=language)
-        # Example stub so the project runs without the SDK:
-        return ("[AI Answer in {lang}] Here’s general guidance. "
-                "For personal account help, contact your bank directly.").format(lang=language)
+
+        system_prompt = SYSTEM_MY if language == "my" else SYSTEM_EN
+
+        # Responses API (current recommended pattern)
+        try:
+            resp = self.client.responses.create(
+                model=self.model,
+                input=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_text},
+                ],
+                max_output_tokens=250,
+                temperature=0.2,
+            )
+            out = resp.output_text  # SDK convenience property
+            return out.strip() if out else None
+        except Exception:
+            # Fail gracefully back to rules
+            return None

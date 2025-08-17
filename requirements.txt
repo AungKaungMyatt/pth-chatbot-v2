@@ -4,6 +4,7 @@ pydantic==2.7.4
 regex==2024.5.15
 python-multipart==0.0.9
 python-dotenv==1.0.1
+openai>=1.40.0
 # Optional OCR (app runs without these)
 pillow==10.3.0
 pytesseract==0.3.10
