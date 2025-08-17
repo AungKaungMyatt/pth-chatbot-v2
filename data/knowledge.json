@@ -1,0 +1,71 @@
+{
+  "meta": {
+    "version": "1.0",
+    "language": ["en", "my"],
+    "jurisdiction": ["Myanmar"],
+    "notes": "Education only. No account access."
+  },
+  "entries": [
+    {
+      "intent": "phishing_sms",
+      "patterns": ["phishing", "smishing", "fake sms", "link in sms", "message says account locked"],
+      "synonyms": ["otp", "urgent", "verify now", "limited time", "update account", "အကောင့်", "အရေးပေါ်", "OTP", "အသိပေးစာ", "လင့်ခ်နှိပ်"],
+      "answers": {
+        "en": "This looks like SMS phishing (smishing). Do not click links or share OTP. Go to your bank's official app/website or call the official hotline printed on your card.",
+        "my": "ဒါဟာ SMS ဖြင့်လုပ်တဲ့ ပစ်ရှင်း ဖြစ်နိုင်ပါတယ်။ လင့်ခ်မနှိပ်ပါနှင့်၊ OTP မဝေကြားပါနှင့်။ ဘဏ်၏ တရားဝင် app/website ကို ကိုယ်တိုင်ဝင်ပါ၊ သို့မဟုတ် ကတ်ပေါ်ရှိ တရားဝင်ဖုန်းနံပါတ်ကို ဆက်သွယ်ပါ။"
+      },
+      "safety_notes": [
+        "Never share OTP/PIN.",
+        "Banks do not ask to verify via random links."
+      ],
+      "examples": [
+        "Your account will be locked. Verify now: http://bit.ly/...",
+        "အကောင့်ပိတ်မည်၊ အမြန်စစ်ဆေးရန် ဤလင့်ခ်ကိုနှိပ်ပါ။"
+      ]
+    },
+    {
+      "intent": "lost_or_stolen_card",
+      "patterns": ["lost card", "stolen card", "block card", "freeze card", "debit card lost", "credit card lost", "ကဒ် မဖြစ်မနေ ပိတ်"],
+      "synonyms": ["card freeze", "lock card", "cancel card", "ကဒ်ပျောက်", "ကဒ်လု"],
+      "answers": {
+        "en": "I can’t access accounts. Please contact your bank immediately to block the card. Use the official hotline or app. If you need numbers, check the bank website.",
+        "my": "အကောင့်ကို ဝင်ပြီးလုပ်ဆောင်ပေးလို့မရပါ။ ကဒ်ပိတ်ရန် ဘဏ်ကို ချက်ချင်းဆက်သွယ်ပါ။ တရားဝင် hotline သို့မဟုတ် app ကိုအသုံးပြုပါ။ ဖုန်းနံပါတ်များအတွက် ဘဏ်၏ တရားဝင်ဝဘ်ဆိုဒ်ကို စစ်ဆေးပါ။"
+      },
+      "safety_notes": ["Act fast to limit fraud."],
+      "examples": ["I lost my KBZ debit card.", "ကျွန်တော်ကဒ်ပျောက်သွားပါတယ်။"]
+    },
+    {
+      "intent": "otp_policy",
+      "patterns": ["otp", "one time password", "share otp?", "otp request", "OTP ဖြည့်ပေး"],
+      "synonyms": ["PIN", "passcode", "one-time code", "စကားဝှက်", "သတ်မှတ်ကုဒ်"],
+      "answers": {
+        "en": "Never share OTP, PIN, or passwords—banks and staff will never ask for them in chat, SMS, or phone.",
+        "my": "OTP, PIN နဲ့ စကားဝှက်တွေကို မည်သူ့ကိုမျှ မပေးပါနှင့်။ ဘဏ်နှင့် ဝန်ထမ်းများသည် chat, SMS သို့မဟုတ် ဖုန်းခေါ်ဆိုမှုများတွင် မတောင်းဆိုကြပါ။"
+      },
+      "safety_notes": ["High-risk if anyone asks for OTP."],
+      "examples": ["Please tell me your OTP.", "OTP ကို ဖြည့်ပေးပါ။"]
+    },
+    {
+      "intent": "personal_account_scope",
+      "patterns": ["account balance", "transfer", "statement", "investment advice", "loan approval", "ငွေလွဲ", "အရှိန်အဟုန်", "statement ပြ"],
+      "synonyms": ["check my balance", "should I buy stock", "သိန်းဘယ်လောက်ကျန်"],
+      "answers": {
+        "en": "For personal account matters (balance, transfers, investments), please contact your bank directly. I provide education and general guidance only.",
+        "my": "ကိုယ်ပိုင်အကောင့်ဆိုင်ရာ (လက်ကျန်၊ ငွေလွဲ၊ ရင်းနှီးမြှုပ်နှံရေး) မေးခွန်းများအတွက် သက်ဆိုင်ရာ ဘဏ်နှင့်တိုက်ရိုက်ဆက်သွယ်ပါ။ ငါသည် ပညာပေးနှင့် အထွေထွေညွှန်ကြားချက်များသာ ပေးပါသည်။"
+      },
+      "safety_notes": ["Do not share personal/account data here."],
+      "examples": ["How much money do I have?", "ငွေဘယ်လောက်ကျန်လဲ?"]
+    },
+    {
+      "intent": "kyc_basics",
+      "patterns": ["KYC", "know your customer", "account opening requirements", "အကောင့် ဖွင့်ရန် လိုအပ်ချက်"],
+      "synonyms": ["identity verification", "ID requirements", "အမျိုးအစား", "မှတ်ပုံတင်"],
+      "answers": {
+        "en": "KYC verifies identity to prevent fraud. Generally you need valid ID, recent photo, and basic personal info. Check your bank's website for exact requirements.",
+        "my": "KYC သည် မည်သူ ဖြစ်သည်ကို အတည်ပြုရန်ဖြစ်ပြီး လိမ်လည်မှုတားဆီးရန်အသုံးပြုပါသည်။ အများအားဖြင့် မှတ်ပုံတင်/ID, မကြာမီရိုက်ထားသောဓာတ်ပုံ နှင့် ကိုယ်ရေးလက်ရင်းများလိုအပ်ပါသည်။ အသေးစိတ်ကို သက်ဆိုင်ရာဘဏ်ဝဘ်ဆိုဒ်တွင် စစ်ဆေးပါ။"
+      },
+      "safety_notes": ["Do not upload ID here; use official channels."],
+      "examples": ["What is KYC?", "KYC ဆိုတာဘာလဲ?"]
+    }
+  ]
+}

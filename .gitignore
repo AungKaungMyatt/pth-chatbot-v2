@@ -1,0 +1,19 @@
+# Environments
+.venv/
+ENV/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# OS/IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Local data
+.env
+logs/
