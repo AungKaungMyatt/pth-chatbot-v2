@@ -1,0 +1,40 @@
+:root {
+  --bg: #0b1220;
+  --sidebar: #0c1629;
+  --content: #0e1526;
+  --card: #101b33;
+  --fg: #e6edf7;
+  --muted: #a8b3c7;
+  --accent: #4aa6ff;
+  --border: #1f2a44;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: Inter, system-ui, Arial, sans-serif; }
+pre { white-space: pre-wrap; margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+.layout { display: grid; grid-template-columns: 260px 1fr; height: 100vh; }
+
+.sidebar { background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 12px; }
+.brand { font-weight: 700; }
+.divider { height: 1px; background: var(--border); margin: 10px 0; }
+.box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px; margin-bottom: 10px; }
+.small { font-size: 12px; }
+.muted { color: var(--muted); }
+.spacer { flex: 1; }
+.foot { padding: 6px; }
+
+.content { background: var(--content); display: flex; flex-direction: column; height: 100vh; }
+.messages { padding: 14px; height: calc(100vh - 120px); overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+.msg { display: flex; }
+.msg.user { justify-content: flex-end; }
+.bubble { max-width: 80%; padding: 10px 12px; border-radius: 12px; line-height: 1.4; border: 1px solid var(--border); background: #0f1a2f; }
+.msg.assistant .bubble { background: #0f1f3a; }
+
+.composer { border-top: 1px solid var(--border); padding: 10px; display: flex; gap: 8px; background: var(--card); }
+.composer input { flex: 1; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: #0e1526; color: var(--fg); }
+.composer button { padding: 10px 14px; border-radius: 10px; background: var(--accent); border: none; color: #001025; font-weight: 600; cursor: pointer; }
+.composer button:disabled { opacity: .6; cursor: default; }
+
+.label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+select { width: 100%; background: #0e1526; color: var(--fg); border: 1px solid var(--border); padding: 6px 8px; border-radius: 8px; }
