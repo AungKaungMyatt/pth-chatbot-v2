@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { chat } from "./api";
+import { chat, uploadImage } from "./api";   // ⬅️ added upload helper
 import "./styles.css";
 
 /* ---- constants / helpers ---- */
@@ -122,6 +122,11 @@ export default function App() {
   /* Chat state */
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // NEW: uploading state
+  const [uploading, setUploading] = useState(false);
+  const anyBusy = busy || uploading;
+
   const endRef = useRef(null);
 
   // guards against duplicate send
@@ -217,6 +222,33 @@ export default function App() {
     }
   }
 
+  /* ===== NEW: file upload ===== */
+  const fileRef = useRef(null);
+
+  async function onPickFile(e) {
+    const file = e.target.files?.[0];
+    if (!file || !active) return;
+    try {
+      setUploading(true);
+      appendUserMessage(`(uploaded: ${file.name})`);
+
+      const report = await uploadImage(file);
+      const lines = [
+        `**Risk level:** ${report.risk_level} (score ${report.score})`,
+        ...(report.findings || []).map(
+          (f, i) => `${i + 1}. ${f.rule}${f.detail ? ` — ${f.detail}` : ""}`
+        ),
+      ];
+      appendAssistantMessage(lines.join("\n"));
+    } catch (err) {
+      appendAssistantMessage(`Upload error: ${err?.message || String(err)}`);
+    } finally {
+      setUploading(false);
+      // allow picking same file again
+      e.target.value = "";
+    }
+  }
+
   /* ===== NEW: mobile drawer state ===== */
   const [drawer, setDrawer] = useState(false);
   useEffect(() => {
@@ -241,7 +273,7 @@ export default function App() {
             Pyit Tine Htaung
           </div>
 
-          <div className="side-actions">
+        <div className="side-actions">
             {/* mobile-only close button (hidden on desktop via CSS) */}
             <button
               className="icon-btn close-mobile"
@@ -307,7 +339,7 @@ export default function App() {
           </div>
         </div>
 
-        <button className="btn new" onClick={onNewChat} disabled={busy}>
+        <button className="btn new" onClick={onNewChat} disabled={anyBusy}>
           + New chat
         </button>
 
@@ -388,17 +420,40 @@ export default function App() {
         </div>
 
         <div className="composer">
+          {/* text area (auto column) */}
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder="Type a message…"
             rows={2}
-            disabled={busy}
+            disabled={anyBusy}
           />
-          <button type="button" onClick={send} disabled={busy}>
-            {busy ? "…" : "Send"}
-          </button>
+
+          {/* actions column (Upload + Send) */}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => fileRef.current?.click()}
+              disabled={anyBusy}
+              title="Upload screenshot"
+            >
+              {uploading ? "Uploading…" : "📎 Upload"}
+            </button>
+
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={onPickFile}
+            />
+
+            <button type="button" onClick={send} disabled={anyBusy}>
+              {busy ? "…" : "Send"}
+            </button>
+          </div>
         </div>
       </main>
     </div>

@@ -57,3 +57,18 @@ export async function health(){
     return { ok:false, error: e?.name==="AbortError" ? "timeout" : String(e) };
   } finally { clear(); }
 }
+
+export async function uploadImage(file) {
+  const fd = new FormData();
+  fd.append("file", file); // <-- field name must be `file`
+
+  const res = await fetch(`${BASE}/api/upload`, {
+    method: "POST",
+    body: fd,            // IMPORTANT: do NOT set Content-Type; browser sets it
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(()=>res.statusText);
+    throw new Error(`Upload failed: ${res.status} ${txt}`);
+  }
+  return res.json();     // { risk_level, score, findings: [...], language }
+}
