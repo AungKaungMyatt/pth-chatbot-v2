@@ -1,4 +1,4 @@
-/* THEME VARIABLES */
+/* ================= THEME ================= */
 :root {
   --bg: #0b1220;
   --sidebar: #0c1629;
@@ -8,6 +8,11 @@
   --muted: #a8b3c7;
   --accent: #4aa6ff;
   --border: #1f2a44;
+
+  /* layout helpers */
+  --sidebar-w: 320px;
+  --gap: 12px;
+  --bubble-max: 880px;
 }
 
 html[data-theme="light"] {
@@ -21,30 +26,27 @@ html[data-theme="light"] {
   --border: #dbe4f0;
 }
 
-/* BASE */
-* {
-  box-sizing: border-box;
-}
+/* ================ BASE =================== */
+* { box-sizing: border-box; }
+html, body, #root { height: 100dvh; }     /* dynamic vh avoids mobile URL bar jump */
 body {
   margin: 0;
   background: var(--bg);
   color: var(--fg);
   font-family: Inter, system-ui, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
-pre {
-  white-space: pre-wrap;
-  margin: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
+pre { white-space: pre-wrap; margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
-/* LAYOUT */
+/* ================= LAYOUT ================ */
 .layout {
   display: grid;
-  grid-template-columns: 320px 1fr; /* sidebar a bit wider */
-  height: 100vh;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  height: 100dvh;
 }
 
-/* SIDEBAR */
+/* ================= SIDEBAR =============== */
 .sidebar {
   background: var(--sidebar);
   border-right: 1px solid var(--border);
@@ -52,16 +54,16 @@ pre {
   flex-direction: column;
   padding: 16px;
   gap: 12px;
+  min-width: 0;
 }
 .side-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
-.brand {
-  font-weight: 700;
-  font-size: 16px;
-}
+.brand { font-weight: 700; font-size: 16px; display: inline-flex; align-items: center; gap: 8px; }
+.brand .logo { width: 28px; height: 28px; border-radius: 8px; }
+
 .icon-btn {
   border: 1px solid var(--border);
   background: var(--card);
@@ -70,6 +72,7 @@ pre {
   padding: 6px 10px;
   cursor: pointer;
 }
+
 .btn.new {
   background: var(--accent);
   color: #001025;
@@ -95,135 +98,91 @@ pre {
   cursor: pointer;
   border-bottom: 1px solid var(--border);
 }
-.history-item:last-child {
-  border-bottom: 0;
-}
-.history-item.active {
-  background: rgba(74, 166, 255, 0.12);
-}
+.history-item:last-child { border-bottom: 0; }
+.history-item.active { background: rgba(74, 166, 255, 0.12); }
 .history-item .title {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .history-item .x {
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  font-size: 16px;
-  cursor: pointer;
+  border: none; background: transparent; color: var(--muted);
+  font-size: 16px; cursor: pointer;
 }
 
-.divider {
-  height: 1px;
-  background: var(--border);
-  margin: 8px 0;
-}
-.box {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px;
-}
-.label {
-  font-size: 12px;
-  color: var(--muted);
-  margin-bottom: 6px;
-}
-select {
-  width: 100%;
-  background: var(--content);
-  color: var(--fg);
-  border: 1px solid var(--border);
-  padding: 8px;
-  border-radius: 8px;
-}
-.row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.small {
-  font-size: 12px;
-  color: var(--muted);
-}
-.settings {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 12px;
-  background: var(--card);
-}
+.side-actions { display: flex; align-items: center; gap: 8px; }
 
-/* CHAT */
+/* ================ CONTENT / CHAT ========= */
 .content {
   background: var(--content);
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100dvh;
+  min-width: 0;
 }
+
+/* scroll area grows naturally; no fixed heights */
 .messages {
-  padding: 24px 40px; /* more comfortable margins */
-  height: calc(100vh - 140px);
+  flex: 1;
+  min-height: 0;
   overflow: auto;
+  padding: clamp(16px, 3vw, 40px);
   display: flex;
   flex-direction: column;
   gap: 18px;
   align-items: center; /* center bubbles */
 }
-.msg {
-  display: flex;
-  width: 100%;
-}
-.msg.user {
-  justify-content: flex-end;
-}
 
+.msg { display: flex; width: 100%; }
+.msg.user { justify-content: flex-end; }
+
+/* bubbles */
 .bubble {
-  max-width: 880px; /* wider bubble */
+  max-width: min(var(--bubble-max), 92vw);
   width: fit-content;
   padding: 16px 20px;
   border-radius: 16px;
   line-height: 1.55;
   border: 1px solid var(--border);
   background: #0f1a2f;
+  overflow-wrap: anywhere; /* prevents overflow on long tokens/links */
 }
-html[data-theme="light"] .bubble {
-  background: #eef4ff;
-}
-.msg.assistant .bubble {
-  background: #0f1f3a;
-}
-html[data-theme="light"] .msg.assistant .bubble {
-  background: #f2f6ff;
-}
-.bubble.error {
-  background: #4a1f1f;
-  color: #fff;
-}
-.meta {
-  margin-top: 6px;
-  opacity: 0.8;
-  font-size: 12px;
-}
+html[data-theme="light"] .bubble { background: #eef4ff; }
+.msg.assistant .bubble { background: #0f1f3a; }
+html[data-theme="light"] .msg.assistant .bubble { background: #f2f6ff; }
 
-/* COMPOSER */
+.bubble.error { background: #4a1f1f; color: #fff; }
+.meta { margin-top: 6px; opacity: 0.8; font-size: 12px; }
+
+/* typing indicator */
+.bubble.typing {
+  display: inline-flex; align-items: center; gap: 6px;
+  width: 64px; justify-content: center; padding: 10px 12px; opacity: 0.9;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); opacity: 0.6; animation: pth-bounce 1.2s infinite ease-in-out; }
+.dot:nth-child(2){ animation-delay: .2s; } .dot:nth-child(3){ animation-delay: .4s; }
+@keyframes pth-bounce{0%,80%,100%{transform:translateY(0);opacity:.5}40%{transform:translateY(-4px);opacity:1}}
+
+/* ================ COMPOSER =============== */
 .composer {
+  position: sticky;                 /* pins to bottom on mobile too */
+  bottom: 0;
   border-top: 1px solid var(--border);
-  padding: 16px 24px;
+  padding: 12px clamp(12px, 3vw, 24px);
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 12px;
   background: var(--card);
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
 }
+
 textarea {
   resize: none;
+  width: 100%;
   padding: 14px;
   border-radius: 12px;
   border: 1px solid var(--border);
   background: var(--content);
   color: var(--fg);
-  font-size: 14px;
+  font-size: 16px; /* 16px prevents iOS zoom-on-focus */
 }
 .btn {
   padding: 12px 18px;
@@ -234,136 +193,66 @@ textarea {
   font-weight: 600;
   cursor: pointer;
 }
-.btn:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-/* ===== Header auth area ===== */
-.side-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.auth-actions {
-  display: flex;
-  gap: 8px;
-}
-.btn.small {
-  padding: 6px 10px;
-  border-radius: 8px;
-}
-.btn.ghost.small {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--fg);
-}
+.btn:disabled { opacity: .6; cursor: default; }
 
-/* Avatar button + dropdown */
-.user-menu {
-  position: relative;
-}
+/* ============ Avatar menu (touch friendly) ====== */
+.user-menu { position: relative; }
 .avatar-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
+  width: 34px; height: 34px; border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--card);
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  cursor: pointer;
+  display: grid; place-items: center; overflow: hidden; cursor: pointer;
 }
-.avatar-btn img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.avatar-btn span {
-  font-weight: 700;
-}
+.avatar-btn img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-btn span { font-weight: 700; }
 
+/* show menu on hover OR focus (works on touch via click focus) */
 .user-menu .menu {
   display: none;
   position: absolute;
-  top: 40px;
-  right: 0;
-  min-width: 200px;
+  top: 40px; right: 0; min-width: 200px;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 8px;
-  z-index: 10;
+  padding: 8px; z-index: 10;
 }
-.user-menu:hover .menu {
-  display: block;
-} /* simple hover menu; replace with click-toggle if you want */
+.user-menu:hover .menu,
+.user-menu:focus-within .menu { display: block; }
 
-.menu-header {
-  padding: 6px 8px;
-}
-.menu-name {
-  font-weight: 700;
-}
-.menu-email {
-  font-size: 12px;
-  color: var(--muted);
-}
-.menu-divider {
-  height: 1px;
-  background: var(--border);
-  margin: 6px 0;
-}
+.menu-header { padding: 6px 8px; }
+.menu-name { font-weight: 700; }
+.menu-email { font-size: 12px; color: var(--muted); }
+.menu-divider { height: 1px; background: var(--border); margin: 6px 0; }
 .menu-item {
-  width: 100%;
-  text-align: left;
-  background: transparent;
-  color: var(--fg);
-  border: 0;
-  padding: 8px;
-  border-radius: 8px;
-  cursor: pointer;
+  width: 100%; text-align: left; background: transparent; color: var(--fg);
+  border: 0; padding: 8px; border-radius: 8px; cursor: pointer;
 }
-.menu-item:hover {
-  background: rgba(255, 255, 255, 0.06);
-}
-.menu-item.danger {
-  color: #ff7b7b;
-}
-/* --- Assistant typing bubble --- */
-.bubble.typing {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  width: 64px; /* compact bubble width */
-  justify-content: center;
-  padding: 10px 12px; /* slightly smaller than normal */
-  opacity: 0.9;
+.menu-item:hover { background: rgba(255,255,255,0.06); }
+.menu-item.danger { color: #ff7b7b; }
+
+/* =============== RESPONSIVE ================= */
+
+/* medium screens: slim sidebar, slightly smaller bubbles */
+@media (max-width: 1200px) {
+  :root { --sidebar-w: 280px; }
+  .bubble { max-width: min(760px, 94vw); }
 }
 
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--muted);
-  opacity: 0.6;
-  animation: pth-bounce 1.2s infinite ease-in-out;
-}
-.dot:nth-child(2) {
-  animation-delay: 0.2s;
-}
-.dot:nth-child(3) {
-  animation-delay: 0.4s;
+/* tablet & phones: stack layout, sidebar becomes sticky header section */
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar {
+    position: sticky; top: 0; z-index: 3;
+    border-right: 0; border-bottom: 1px solid var(--border);
+  }
+  .history { max-height: 40vh; }
+  .messages { align-items: stretch; }              /* bubbles full width-ish */
+  .bubble { max-width: 96vw; }
 }
 
-@keyframes pth-bounce {
-  0%,
-  80%,
-  100% {
-    transform: translateY(0);
-    opacity: 0.5;
-  }
-  40% {
-    transform: translateY(-4px);
-    opacity: 1;
-  }
+/* small phones: tighter paddings */
+@media (max-width: 480px) {
+  .messages { gap: 14px; padding: 14px; }
+  .btn.new { padding: 10px; }
+  .brand { font-size: 14px; }
 }

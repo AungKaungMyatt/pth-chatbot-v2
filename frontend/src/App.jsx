@@ -78,7 +78,6 @@ export default function App() {
 
   // simple demo handlers (replace with real API later)
   function fakeSignIn() {
-    // In real life: open modal → call backend → set auth with real user.
     setAuth({
       signedIn: true,
       name: "Demo User",
@@ -93,7 +92,6 @@ export default function App() {
       email: "",
       avatar: "",
     });
-    // optional local profile seed
     localStorage.setItem(
       PROFILE_KEY,
       JSON.stringify({ name: "New User", email: "", avatar: "" })
@@ -223,7 +221,17 @@ export default function App() {
     <div className="layout">
       <aside className="sidebar">
         <div className="side-header">
-          <div className="brand">Pyit Tine Htaung</div>
+          {/* ONLY CHANGE: show your PNG next to the brand text */}
+          <div className="brand">
+            <img
+              src="/pth.png"
+              alt="Pyit Tine Htaung"
+              className="logo"
+              style={{ width: 28, height: 28, borderRadius: 8, marginRight: 8 }}
+            />
+            Pyit Tine Htaung
+          </div>
+
           <div className="side-actions">
             {/* theme toggle */}
             <button
