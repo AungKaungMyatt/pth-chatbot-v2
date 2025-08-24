@@ -201,8 +201,20 @@
         "အတည်ပြုကုဒ်"
       ],
       "answers": {
-        "en": "Don’t click links and don’t share codes. Manually open the bank’s website/app or call the official hotline to verify any message.",
-        "my": "လင့်ခ် မနှိပ်ပါနှင့်၊ ကုဒ်များ မမျှဝေပါနှင့်။ ဘဏ်၏ ဝဘ်ဆိုဒ်/အက်ပ်ကို ကိုယ်တိုင် ဖွင့်ကြည့်ပါ သို့မဟုတ် တရားဝင် ဖုန်းလိုင်းသို့ ခေါ်ပြန်ပြီး အတည်ပြုပါ။"
+        "en": [
+          "Do not click links or open attachments from messages.",
+          "Never share OTP/PIN—banks won’t ask for them by SMS/call.",
+          "Manually open the official app/website to verify any alert.",
+          "Call the bank’s official hotline using a number you looked up yourself.",
+          "Report the message/call as phishing to your bank."
+        ],
+        "my": [
+          "စာတို/မက်ဆေ့ခ်ျမှ လင့်ခ်နှင့် ပူးတွဲဖိုင် မဖွင့်ပါနှင့်။",
+          "OTP/PIN မမျှဝေပါနှင့်—ဘဏ်များသည် SMS/ဖုန်းဖြင့် မတောင်းပါ။",
+          "မက်ဆေ့ခ်ျ တစ်စုံတစ်ရာကို အတည်ပြုရန် တရားဝင် App/Website ကို ကိုယ်တိုင် ဖွင့်ကြည့်ပါ။",
+          "ကိုယ်တိုင် ရှာဖွေခန့်မှန်းထားသော တရားဝင် နံပါတ်သို့ ဘဏ်ကို ခေါ်ပြန်ပါ။",
+          "အဆိုပါ စာတို/ခေါ်ဆိုမှုကို ဘဏ်ထံ phishing ဟု တိုင်ကြားပါ။"
+        ]
       },
       "safety_notes": [
         "Type URLs yourself; never trust message links.",
@@ -274,8 +286,22 @@
         "tool"
       ],
       "answers": {
-        "en": "Use 12+ characters with upper/lowercase, numbers, and symbols. Avoid personal info and common words. Prefer a password manager.",
-        "my": "စာလုံးအကြီး/အသေး၊ နံပါတ်နှင့် သင်္ကေတပါ ၁၂ လုံးအထက် စကားဝှက်သုံးပါ။ ကိုယ်ရေးအချက်အလက်/လူကြိုက်များသော စကားလုံးများ မသုံးပါနှင့်။ Password Manager သုံးပါ။"
+        "en": [
+          "Use 12+ characters mixing upper/lowercase, numbers, and symbols.",
+          "Prefer a passphrase of 3–5 random words.",
+          "Never reuse passwords—use a password manager.",
+          "Avoid personal info and common words.",
+          "Enable two-factor authentication (2FA).",
+          "Change weak or reused passwords first."
+        ],
+        "my": [
+          "စာလုံးအကြီး/အငယ်၊ ကိန်းဂဏန်း၊ သင်္ကေတများပေါင်းစပ်ပြီး ၁၂ လုံးအထက် သုံးပါ။",
+          "စကားစု ၃–၅ စာဖြင့် passphrase အသုံးပြုပါ။",
+          "စကားဝှက်များ ပြန်သုံးမထားပါ—password manager သုံးပါ။",
+          "ကိုယ်ရေးလက်ရာ၊ လူကြိုက်များ စကားလုံးများ မသုံးပါနှင့်။",
+          "ဖြစ်နိုင်သမျှ 2FA ဖွင့်ထားပါ။",
+          "အားနည်း/ပြန်သုံးထားသော စကားဝှက်များကို ဦးစွာ ပြောင်းပါ။"
+        ]
       },
       "safety_notes": [
         "Use unique passwords per site.",
@@ -840,8 +866,20 @@
         "2FA ဖွင့်"
       ],
       "answers": {
-        "en": "Use long, unique passwords with a manager; enable 2FA (prefer app over SMS); keep devices updated; review alerts/statements regularly.",
-        "my": "Password Manager ဖြင့် အရှည်လျားပြီး မတူညီသော စကားဝှက်အသီးသီး သုံးပါ။ 2FA ကို ဖွင့်ပါ (SMS ထက် App ကို ဦးစားပေး)။ စက်များ/အက်ပ်များကို Update လုပ်ပြီး Alert/Statement များကို ပုံမှန်စစ်ဆေးပါ။"
+        "en": [
+          "Use a password manager with long, unique passwords.",
+          "Enable 2FA (prefer app-based authenticators over SMS).",
+          "Keep the banking app and OS updated.",
+          "Turn on login and transaction alerts.",
+          "Review statements regularly and dispute unknown charges quickly."
+        ],
+        "my": [
+          "Password Manager ဖြင့် အရှည်လျား၍ မတူညီသော စကားဝှက်အသီးသီး သုံးပါ။",
+          "2FA ကို ဖွင့်ပါ (SMS ထက် App-based ကို ဦးစားပေးပါ).",
+          "ဘဏ်အက်ပ်နှင့် OS ကို အမြဲ Update ထားပါ။",
+          "ဝင်ရောက်မှု/လုပ်ဆောင်မှု အသိပေးချက်များ ဖွင့်ပါ။",
+          "Statement များကို ပုံမှန် စစ်ဆေးပြီး မသိသော ကုန်ကျစရိတ်များကို ချက်ချင်း တိုင်ကြားပါ။"
+        ]
       },
       "safety_notes": ["Prefer app-based 2FA.", "Use a password manager."],
       "examples": [

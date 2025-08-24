@@ -1,5 +1,6 @@
-# app/engine/rule_engine.py
 import json
+import os
+import random
 import regex as re
 from typing import Any, Dict, List, Tuple
 from app.nlp.lang import normalize, detect_language
@@ -71,6 +72,35 @@ class RuleEngine:
             e["_pat_tokens"] = [_pattern_tokens(p) for p in e.get("patterns", [])]
             e["_syn_tokens"] = [_pattern_tokens(s) for s in e.get("synonyms", [])]
 
+    # ---- NEW: render answers with optional variety ----
+    def _render_answer(self, entry: Dict[str, Any], lang: str) -> str:
+        """
+        Supports BOTH:
+          answers[lang] = "string"
+          answers[lang] = ["tip 1", "tip 2", ...]
+        If it's a list, we sample a few and render a numbered list.
+        ITEMS_PER_ANSWER env (default 4) controls how many to show.
+        """
+        answers = entry.get("answers", {}) or {}
+        val = answers.get(lang) or answers.get("en") or ""
+
+        # unchanged behavior for a single string
+        if not isinstance(val, list):
+            return str(val)
+
+        try:
+            k = max(1, int(os.getenv("ITEMS_PER_ANSWER", "4")))
+        except Exception:
+            k = 4
+
+        pool = [str(x).strip() for x in val if str(x).strip()]
+        if not pool:
+            return ""
+
+        random.shuffle(pool)
+        items = pool[: min(k, len(pool))]
+        return "\n".join(f"{i}. {s}" for i, s in enumerate(items, start=1))
+
     def _score_entry(self, text_tokens: set, entry: Dict[str, Any]) -> Tuple[float, str, float]:
         matched_terms: List[str] = []
         score = 0.0
@@ -132,8 +162,8 @@ class RuleEngine:
             "matched": best_match_str,
         }
         if best_entry:
-            answers = best_entry.get("answers", {})
-            result["answer"] = answers.get(lang) or answers.get("en") or ""
+            # use the new renderer (keeps old behavior when a single string)
+            result["answer"] = self._render_answer(best_entry, lang)
         return result
 
     def trace(self, text: str, lang_hint: str | None = None, top_k: int = 12) -> Dict[str, Any]:
