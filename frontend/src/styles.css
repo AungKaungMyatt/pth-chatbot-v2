@@ -184,6 +184,66 @@ textarea {
   color: var(--fg);
   font-size: 16px; /* 16px prevents iOS zoom-on-focus */
 }
+
+/* Composer: icon | textarea | send */
+.composer {
+  border-top: 1px solid var(--border);
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: auto 1fr auto; /* icon, input, send */
+  gap: 10px;
+  align-items: center;
+  background: var(--card);
+}
+
+/* Round icon button (Upload) */
+.icon-round {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--content);
+  color: var(--fg);
+  cursor: pointer;
+}
+.icon-round:disabled { opacity: 0.6; cursor: default; }
+
+/* Send button */
+.btn.primary {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #001025;
+  border: none;
+  display: inline-grid;
+  grid-auto-flow: column;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn.primary:disabled { opacity: 0.6; cursor: default; }
+
+/* Textarea tweaks so it lines up nicely */
+.composer textarea {
+  resize: none;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--content);
+  color: var(--fg);
+  font-size: 14px;
+  min-height: 40px;
+}
+
+/* Hide 'Send' text on very small screens; keep the icon */
+@media (max-width: 460px) {
+  .hide-sm { display: none; }
+}
+
 .btn {
   padding: 12px 18px;
   border-radius: 12px;
@@ -313,4 +373,48 @@ textarea {
 /* hide the mobile-only close button on desktop */
 @media (min-width: 901px) {
   .close-mobile { display: none; }
+}
+/* ========= APPEND BELOW (overrides) ========= */
+
+/* 1) Clear “who said what” with distinct bubbles + a soft shadow */
+.msg.user .bubble {
+  background: #1b3a6b;          /* dark user bubble */
+  border-color: #224a88;
+}
+.msg.assistant .bubble {
+  background: #1a2238;          /* dark assistant bubble */
+  border-color: #2a3350;
+}
+html[data-theme="light"] .msg.user .bubble {
+  background: #e7f0ff;          /* light user bubble */
+  border-color: #cfe1ff;
+}
+html[data-theme="light"] .msg.assistant .bubble {
+  background: #f5f7fb;          /* light assistant bubble */
+  border-color: #e3e8f3;
+}
+
+/* subtle depth */
+.bubble { box-shadow: 0 2px 10px rgba(0,0,0,.12); }
+
+/* tiny role tag used in App.jsx (“You” / “PTH”) */
+.meta-tag {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  opacity: .7;
+  margin-bottom: 6px;
+}
+
+/* 2) Mobile top bar brand (logo + text) */
+.mobile-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+.logo-sm {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
 }

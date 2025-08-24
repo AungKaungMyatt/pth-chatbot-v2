@@ -39,7 +39,7 @@ function maybeAttachNote(text, intent, lang = "en") {
   return clean;
 }
 
-/* --------- NEW: super-small safe Markdown (bold + line breaks) --------- */
+/* --- tiny safe markdown (bold + line breaks) --- */
 function escapeHtml(s = "") {
   return s
     .replaceAll("&", "&amp;")
@@ -50,7 +50,9 @@ function escapeHtml(s = "") {
 }
 function mdLite(s = "") {
   const safe = escapeHtml(s);
-  return safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br/>");
+  return safe
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\n/g, "<br/>");
 }
 
 function newSession(title = "New chat") {
@@ -90,7 +92,6 @@ export default function App() {
     localStorage.setItem(AUTH_KEY, JSON.stringify(auth));
   }, [auth]);
 
-  // demo auth
   function fakeSignIn() {
     setAuth({
       signedIn: true,
@@ -140,6 +141,8 @@ export default function App() {
   const anyBusy = busy || uploading;
 
   const endRef = useRef(null);
+  const inputRef = useRef(null);
+  const fileRef = useRef(null);
 
   // guards against duplicate send
   const sendingRef = useRef(false);
@@ -148,6 +151,10 @@ export default function App() {
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [active?.messages]);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   /* -------- immutable helpers -------- */
   function setActiveSession(updater) {
@@ -172,7 +179,8 @@ export default function App() {
     setSessions((all) => [s, ...all]);
     setActiveId(s.id);
     setInput("");
-    setDrawer(false); // close drawer on mobile
+    setDrawer(false);
+    requestAnimationFrame(() => inputRef.current?.focus());
   }
   function onDeleteSession(id) {
     setSessions((all) => {
@@ -220,9 +228,8 @@ export default function App() {
       appendAssistantMessage("Server error: " + (e?.message || ""));
     } finally {
       setBusy(false);
-      setTimeout(() => {
-        sendingRef.current = false;
-      }, 0);
+      sendingRef.current = false;
+      requestAnimationFrame(() => inputRef.current?.focus());
     }
   }
 
@@ -235,8 +242,6 @@ export default function App() {
   }
 
   /* ===== file upload ===== */
-  const fileRef = useRef(null);
-
   async function onPickFile(e) {
     const file = e.target.files?.[0];
     if (!file || !active) return;
@@ -256,7 +261,8 @@ export default function App() {
       appendAssistantMessage(`Upload error: ${err?.message || String(err)}`);
     } finally {
       setUploading(false);
-      e.target.value = ""; // allow picking same file again
+      e.target.value = "";
+      requestAnimationFrame(() => inputRef.current?.focus());
     }
   }
 
@@ -359,6 +365,7 @@ export default function App() {
               onClick={() => {
                 setActiveId(s.id);
                 setDrawer(false);
+                requestAnimationFrame(() => inputRef.current?.focus());
               }}
             >
               <span className="title">{s.title}</span>
@@ -395,14 +402,20 @@ export default function App() {
           >
             ☰
           </button>
-          <div className="title">Pyit Tine Htaung</div>
+
+          {/* brand with logo on mobile */}
+          <div className="mobile-brand">
+            <img src="/pth.png" alt="PTH" className="logo-sm" />
+            <span>Pyit Tine Htaung</span>
+          </div>
+
           <button
             className="icon-btn"
             aria-label="Toggle theme"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             title="Toggle theme"
           >
-            {theme === "dark" ? "🌞" : "🌙"}
+            {theme === "dark" ? "🌙" : "☀️"}
           </button>
         </div>
 
@@ -410,7 +423,7 @@ export default function App() {
           {active?.messages.map((m, i) => (
             <div key={i} className={`msg ${m.role}`}>
               <div className="bubble">
-                {/* render markdown-lite (bold + line breaks) safely */}
+                <div className="meta-tag">{m.role === "user" ? "You" : "PTH"}</div>
                 <div
                   className="md"
                   dangerouslySetInnerHTML={{ __html: mdLite(m.text) }}
@@ -431,8 +444,41 @@ export default function App() {
           <div ref={endRef} />
         </div>
 
+        {/* composer: icon Upload | textarea | Send */}
         <div className="composer">
+          <button
+            type="button"
+            className="icon-round"
+            onClick={() => fileRef.current?.click()}
+            disabled={anyBusy}
+            title="Upload image"
+            aria-label="Upload image"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              aria-hidden="true"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.2a2 2 0 11-2.83-2.83l7.78-7.78" />
+            </svg>
+          </button>
+
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={onPickFile}
+          />
+
           <textarea
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}
@@ -441,29 +487,18 @@ export default function App() {
             disabled={anyBusy}
           />
 
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              type="button"
-              className="btn"
-              onClick={() => fileRef.current?.click()}
-              disabled={anyBusy}
-              title="Upload screenshot"
-            >
-              {uploading ? "Uploading…" : "📎 Upload"}
-            </button>
-
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              style={{ display: "none" }}
-              onChange={onPickFile}
-            />
-
-            <button type="button" onClick={send} disabled={anyBusy}>
-              {busy ? "…" : "Send"}
-            </button>
-          </div>
+          <button
+            type="button"
+            className="btn primary"
+            onClick={send}
+            disabled={anyBusy}
+            title="Send"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path fill="currentColor" d="M3 11l18-8-8 18-2-7-8-3z" />
+            </svg>
+            <span className="hide-sm">Send</span>
+          </button>
         </div>
       </main>
     </div>
