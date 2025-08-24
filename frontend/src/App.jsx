@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { chat, uploadImage } from "./api";   // ⬅️ added upload helper
+import { chat, uploadImage } from "./api";
 import "./styles.css";
 
 /* ---- constants / helpers ---- */
@@ -39,6 +39,20 @@ function maybeAttachNote(text, intent, lang = "en") {
   return clean;
 }
 
+/* --------- NEW: super-small safe Markdown (bold + line breaks) --------- */
+function escapeHtml(s = "") {
+  return s
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+function mdLite(s = "") {
+  const safe = escapeHtml(s);
+  return safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br/>");
+}
+
 function newSession(title = "New chat") {
   return {
     id: crypto.randomUUID(),
@@ -76,7 +90,7 @@ export default function App() {
     localStorage.setItem(AUTH_KEY, JSON.stringify(auth));
   }, [auth]);
 
-  // simple demo handlers (replace with real API later)
+  // demo auth
   function fakeSignIn() {
     setAuth({
       signedIn: true,
@@ -122,8 +136,6 @@ export default function App() {
   /* Chat state */
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-
-  // NEW: uploading state
   const [uploading, setUploading] = useState(false);
   const anyBusy = busy || uploading;
 
@@ -137,7 +149,7 @@ export default function App() {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [active?.messages]);
 
-  /* -------- immutable helpers (NO mutation) -------- */
+  /* -------- immutable helpers -------- */
   function setActiveSession(updater) {
     setSessions((all) => all.map((s) => (s.id === activeId ? updater(s) : s)));
   }
@@ -222,7 +234,7 @@ export default function App() {
     }
   }
 
-  /* ===== NEW: file upload ===== */
+  /* ===== file upload ===== */
   const fileRef = useRef(null);
 
   async function onPickFile(e) {
@@ -244,12 +256,11 @@ export default function App() {
       appendAssistantMessage(`Upload error: ${err?.message || String(err)}`);
     } finally {
       setUploading(false);
-      // allow picking same file again
-      e.target.value = "";
+      e.target.value = ""; // allow picking same file again
     }
   }
 
-  /* ===== NEW: mobile drawer state ===== */
+  /* ===== mobile drawer state ===== */
   const [drawer, setDrawer] = useState(false);
   useEffect(() => {
     const onEsc = (e) => e.key === "Escape" && setDrawer(false);
@@ -273,8 +284,7 @@ export default function App() {
             Pyit Tine Htaung
           </div>
 
-        <div className="side-actions">
-            {/* mobile-only close button (hidden on desktop via CSS) */}
+          <div className="side-actions">
             <button
               className="icon-btn close-mobile"
               aria-label="Close menu"
@@ -284,7 +294,6 @@ export default function App() {
               ✕
             </button>
 
-            {/* theme toggle */}
             <button
               className="icon-btn"
               aria-label="Toggle theme"
@@ -294,7 +303,6 @@ export default function App() {
               {theme === "dark" ? "🌙" : "☀️"}
             </button>
 
-            {/* auth area */}
             {!auth.signedIn ? (
               <div className="auth-actions">
                 <button className="btn ghost small" onClick={fakeSignIn}>
@@ -350,7 +358,7 @@ export default function App() {
               className={"history-item" + (s.id === activeId ? " active" : "")}
               onClick={() => {
                 setActiveId(s.id);
-                setDrawer(false); // close after choosing on mobile
+                setDrawer(false);
               }}
             >
               <span className="title">{s.title}</span>
@@ -402,7 +410,11 @@ export default function App() {
           {active?.messages.map((m, i) => (
             <div key={i} className={`msg ${m.role}`}>
               <div className="bubble">
-                <pre>{m.text}</pre>
+                {/* render markdown-lite (bold + line breaks) safely */}
+                <div
+                  className="md"
+                  dangerouslySetInnerHTML={{ __html: mdLite(m.text) }}
+                />
               </div>
             </div>
           ))}
@@ -420,7 +432,6 @@ export default function App() {
         </div>
 
         <div className="composer">
-          {/* text area (auto column) */}
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -430,7 +441,6 @@ export default function App() {
             disabled={anyBusy}
           />
 
-          {/* actions column (Upload + Send) */}
           <div style={{ display: "flex", gap: 8 }}>
             <button
               type="button"

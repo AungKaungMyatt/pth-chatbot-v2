@@ -4,6 +4,7 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
+import shutil
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("uvicorn.error")
@@ -42,8 +43,13 @@ def root():
     return {"ok": True, "service": "pth-chatbot-api", "version": "2.0.0"}
 
 @app.get("/healthz")
-def healthz():
-    return {"status": "healthy"}
+def health():
+    return {
+        "ok": True,
+        "service": "pth-chatbot-api",
+        "version": "2.0.0",
+        "tesseract_found": bool(shutil.which("tesseract")),
+    }
 
 # --- mount your router (your file is app/routes.py) ---
 from app.routes import router as api_router
