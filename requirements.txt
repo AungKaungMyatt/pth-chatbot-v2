@@ -1,7 +1,8 @@
 fastapi==0.111.0
 uvicorn==0.30.1
-pydantic==2.7.4
-regex==2024.5.15
+pydantic==2.7.4          # pulls pydantic-core wheels
+pydantic-core==2.18.4    # force exact wheel version
+regex
 python-multipart==0.0.9
 python-dotenv==1.0.1
 openai>=1.40.0
