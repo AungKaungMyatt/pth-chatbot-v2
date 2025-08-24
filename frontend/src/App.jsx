@@ -5,8 +5,8 @@ import "./styles.css";
 /* ---- constants / helpers ---- */
 const THEME_KEY = "pth_theme";
 const SESS_KEY = "pth_sessions";
-const AUTH_KEY = "pth_auth"; // { signedIn: boolean, name, email, avatar }
-const PROFILE_KEY = "pth_profile"; // used after sign up to store default profile locally
+const AUTH_KEY = "pth_auth";
+const PROFILE_KEY = "pth_profile";
 
 const SENSITIVE_INTENTS = new Set([
   "vishing_call",
@@ -155,6 +155,7 @@ export default function App() {
     setSessions((all) => [s, ...all]);
     setActiveId(s.id);
     setInput("");
+    setDrawer(false); // close drawer on mobile
   }
   function onDeleteSession(id) {
     setSessions((all) => {
@@ -216,12 +217,20 @@ export default function App() {
     }
   }
 
+  /* ===== NEW: mobile drawer state ===== */
+  const [drawer, setDrawer] = useState(false);
+  useEffect(() => {
+    const onEsc = (e) => e.key === "Escape" && setDrawer(false);
+    window.addEventListener("keydown", onEsc);
+    return () => window.removeEventListener("keydown", onEsc);
+  }, []);
+
   /* -------------------- UI -------------------- */
   return (
     <div className="layout">
-      <aside className="sidebar">
+      {/* Sidebar becomes a drawer on small screens */}
+      <aside className={"sidebar" + (drawer ? " open" : "")}>
         <div className="side-header">
-          {/* ONLY CHANGE: show your PNG next to the brand text */}
           <div className="brand">
             <img
               src="/pth.png"
@@ -233,6 +242,16 @@ export default function App() {
           </div>
 
           <div className="side-actions">
+            {/* mobile-only close button (hidden on desktop via CSS) */}
+            <button
+              className="icon-btn close-mobile"
+              aria-label="Close menu"
+              onClick={() => setDrawer(false)}
+              title="Close"
+            >
+              ✕
+            </button>
+
             {/* theme toggle */}
             <button
               className="icon-btn"
@@ -297,7 +316,10 @@ export default function App() {
             <div
               key={s.id}
               className={"history-item" + (s.id === activeId ? " active" : "")}
-              onClick={() => setActiveId(s.id)}
+              onClick={() => {
+                setActiveId(s.id);
+                setDrawer(false); // close after choosing on mobile
+              }}
             >
               <span className="title">{s.title}</span>
               <button
@@ -320,7 +342,30 @@ export default function App() {
         </div>
       </aside>
 
+      {/* mobile overlay */}
+      {drawer && <div className="backdrop" onClick={() => setDrawer(false)} />}
+
       <main className="content">
+        {/* mobile top bar (hamburger) */}
+        <div className="mobile-bar">
+          <button
+            className="hamburger"
+            aria-label="Open menu"
+            onClick={() => setDrawer(true)}
+          >
+            ☰
+          </button>
+          <div className="title">Pyit Tine Htaung</div>
+          <button
+            className="icon-btn"
+            aria-label="Toggle theme"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            title="Toggle theme"
+          >
+            {theme === "dark" ? "🌞" : "🌙"}
+          </button>
+        </div>
+
         <div className="messages">
           {active?.messages.map((m, i) => (
             <div key={i} className={`msg ${m.role}`}>
