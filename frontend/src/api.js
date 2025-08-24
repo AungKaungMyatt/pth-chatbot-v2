@@ -5,6 +5,11 @@ const ENV_BASE =
 
 export const BASE = (ENV_BASE || "http://localhost:8000").replace(/\/$/, "");
 
+if (typeof window !== "undefined") {
+  console.log("[API BASE]", BASE);
+  window.__API_BASE__ = BASE;
+}
+
 function withTimeout(ms){const c=new AbortController();const id=setTimeout(()=>c.abort(),ms);return{signal:c.signal,clear:()=>clearTimeout(id)};}
 
 async function http(path,{method="POST",body,headers}={}) {
