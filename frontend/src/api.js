@@ -1,17 +1,34 @@
-const BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
+// src/api.js
+const BASE =
+  import.meta?.env?.VITE_API_BASE_URL?.replace(/\/$/, "") || "http://localhost:8000";
 
-export async function chat(payload) {
-  const res = await fetch(`${BASE}/chat`, {
+async function http(path, body) {
+  const res = await fetch(`${BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`chat failed: ${res.status}`);
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`HTTP ${res.status}: ${err || res.statusText}`);
+  }
   return res.json();
 }
 
+export async function chat({ message, language, allow_ai_fallback }) {
+  return http("/chat", { message, language, allow_ai_fallback });
+}
+
+export async function trace({ message, language }) {
+  return http("/admin/trace", { message, language });
+}
+
 export async function aiStatus() {
-  const res = await fetch(`${BASE}/admin/ai_status`);
-  if (!res.ok) throw new Error(`ai_status failed: ${res.status}`);
-  return res.json();
+  // quick probe: use trace to check server is alive
+  try {
+    await trace({ message: "ping" });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
 }

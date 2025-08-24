@@ -1,3 +1,4 @@
+# app/routes.py
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query
 from typing import Optional
 import time
@@ -27,37 +28,60 @@ class TraceReq(BaseModel):
 async def chat(req: ChatRequest):
     t0 = time.perf_counter()
 
-    # rules
+    # ---- Rule-based first
     m = rules.match(req.message, lang_hint=req.lang_hint)
     reply = m.get("answer") or ""
     conf = float(m.get("confidence", 0.0))
     lang = m.get("language", "en")
     used_ai = False
 
-    # Scope guard
+    # ---- Scope guard: personal account actions should always return the canned scope-safe answer
     if m.get("intent") == "personal_account_scope":
         reply = m["answer"]
 
-    # AI fallback
-    if conf < 0.45 and req.allow_ai_fallback:
-        ai_ans = await ai.answer(req.message, lang)
+    # ---- AI fallback (more generous threshold + error logging)
+    # Was 0.45 in your file; bumping to 0.55 so borderline cases can still help users while you improve rules.
+    if conf < 0.55 and req.allow_ai_fallback:
+        try:
+            ai_ans = await ai.answer(req.message, lang)
+        except Exception as e:
+            # surface the issue in logs; do not crash the request
+            try:
+                log_event("chat_ai_error", error=str(e)[:400])
+            except Exception:
+                pass
+            ai_ans = None
+
         if ai_ans:
             reply = ai_ans
             used_ai = True
 
+    # ---- Safe default if still empty (never return a blank reply)
     if not reply:
-        reply = "Please rephrase your question." if lang == "en" else "ကျေးဇူးပြု၍ မေးခွန်းကို ပြန်လည်ဖော်ပြပေးပါ။"
+        reply = (
+            "I can’t fully confirm this from my rules. "
+            "Please use your bank’s official app/website or hotline for account actions. "
+            "If this looks like a scam, don’t click links or share codes."
+            if lang == "en"
+            else "စည်းမျဉ်းအခြေပြု အဖြေမရှိသေးပါ။ ကိုယ်ရေးအကောင့်ဆိုင်ရာလုပ်ဆောင်ချက်များအတွက် "
+                 "ဘဏ်၏ တရားဝင် App/Website သို့မဟုတ် Hotline ကိုသာ သုံးပါ။ "
+                 "လိမ်လည်မှုဖြစ်နိုင်ပါက Link မနှိပ်ပါနှင့်၊ OTP/PIN မမျှဝေပါနှင့်။"
+        )
 
-    # Safety banner
-    banner = ("\n\n**Note:** I’m an educational assistant, not your bank. "
-              "Never share OTP/PIN. For account matters, contact your bank directly.")
+    # ---- Safety banner + redaction (keep your behavior)
+    banner = (
+        "\n\n**Note:** I’m an educational assistant, not your bank. "
+        "Never share OTP/PIN. For account matters, contact your bank directly."
+    )
     if lang == "my":
-        banner = ("\n\n**မှတ်ချက်:** ငါသည် အကြံပညာပေးကူညီရေးဝန်ဆောင်မှုဖြစ်ပြီး သင့်ဘဏ်မဟုတ်ပါ။ "
-                  "OTP/PIN မမျှဝေပါနှင့်။ ကိုယ်ရေးအကောင့်ဆိုင်ရာအတွက် ဘဏ်နှင့်တိုက်ရိုက်ဆက်သွယ်ပါ။")
+        banner = (
+            "\n\n**မှတ်ချက်:** ငါသည် အကြံပညာပေးကူညီရေးဝန်ဆောင်မှုဖြစ်ပြီး သင့်ဘဏ်မဟုတ်ပါ။ "
+            "OTP/PIN မမျှဝေပါနှင့်။ ကိုယ်ရေးအကောင့်ဆိုင်ရာအတွက် ဘဏ်နှင့်တိုက်ရိုက်ဆက်သွယ်ပါ။"
+        )
 
     safe_reply = redact(reply) + banner
 
-    # --- LOG (redacted) ---
+    # ---- LOG (keep your structured fields)
     duration_ms = int((time.perf_counter() - t0) * 1000)
     try:
         log_event(
@@ -82,8 +106,8 @@ async def chat(req: ChatRequest):
             intent=m.get("intent"),
             confidence=conf,
             matched=m.get("matched"),
-            safety_notes=m.get("safety_notes", [])
-        )
+            safety_notes=m.get("safety_notes", []),
+        ),
     )
 
 
@@ -108,15 +132,22 @@ async def analyze_text(req: AnalyzeRequest):
     except Exception:
         pass
 
-    return RiskReport(risk_level=res["risk_level"], score=res["score"], findings=findings, language=res["language"])
+    return RiskReport(
+        risk_level=res["risk_level"],
+        score=res["score"],
+        findings=findings,
+        language=res["language"],
+    )
 
 
 @router.post("/upload", response_model=RiskReport)
 async def upload_file(file: UploadFile = File(...)):
+    # OCR is optional; if not available, we proceed with empty text safely
     try:
         import pytesseract
         from PIL import Image
         import io
+
         content = await file.read()
         img = Image.open(io.BytesIO(content))
         text = pytesseract.image_to_string(img)
@@ -128,7 +159,7 @@ async def upload_file(file: UploadFile = File(...)):
             risk_level="low",
             score=0,
             findings=[RiskFinding(rule="ocr", detail="No text extracted or OCR disabled")],
-            language="en"
+            language="en",
         )
         try:
             log_event("upload", note="no_text_extracted", filename=file.filename)
@@ -151,7 +182,12 @@ async def upload_file(file: UploadFile = File(...)):
     except Exception:
         pass
 
-    return RiskReport(risk_level=res["risk_level"], score=res["score"], findings=findings, language=res["language"])
+    return RiskReport(
+        risk_level=res["risk_level"],
+        score=res["score"],
+        findings=findings,
+        language=res["language"],
+    )
 
 
 # ---------- Admin/debug ----------
@@ -159,9 +195,10 @@ async def upload_file(file: UploadFile = File(...)):
 @router.get("/admin/logs/tail")
 async def logs_tail(n: int = Query(200, ge=1, le=1000)):
     """
-    Get the latest N log events (redacted) from logs/requests.jsonl
+    Get the latest N log events (redacted).
     """
     return {"events": tail_jsonl(n)}
+
 
 @router.post("/admin/trace")
 async def trace(req: TraceReq):

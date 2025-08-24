@@ -1,3 +1,4 @@
+# app/engine/rule_engine.py
 import json
 import regex as re
 from typing import Any, Dict, List, Tuple
@@ -13,10 +14,12 @@ def _tokenize(s: str) -> List[str]:
     return [t for t in _WORD_RE.findall(s) if t]
 
 def _simple_stem_en(tok: str) -> str:
-    # tiny English stemmer (skip Myanmar tokens)
+    # Tiny stemmer for English
     if re.match(r"^[a-z]+$", tok):
         if tok.endswith("ing") and len(tok) > 5:
             return tok[:-3]
+        if tok.endswith("ied") and len(tok) > 4:
+            return tok[:-3] + "y"
         if tok.endswith("ed") and len(tok) > 4:
             return tok[:-2]
         if tok.endswith("es") and len(tok) > 4:
@@ -36,15 +39,17 @@ def _pattern_tokens(s: str) -> List[str]:
 
 def _match_score(text_tokens: set, pat_tokens: List[str]) -> Tuple[float, List[str]]:
     """
-    Score how well pat_tokens appear in text_tokens.
-    - full hit (all tokens present): 1.0
-    - partial hit: proportion (>=0.6 -> 0.7, >=0.4 -> 0.4)
-    - else 0
+    Bag-of-words scoring for one pattern:
+      - all tokens present: 1.0
+      - >=60% present:     0.7
+      - >=40% present:     0.4
+      - else:              0.0
+    Returns (score, matched_tokens).
     """
     if not pat_tokens:
         return 0.0, []
     hits = [t for t in pat_tokens if t in text_tokens]
-    if len(hits) == 0:
+    if not hits:
         return 0.0, []
     if len(hits) == len(pat_tokens):
         return 1.0, hits
@@ -60,22 +65,18 @@ class RuleEngine:
         with open(knowledge_path, "r", encoding="utf-8") as f:
             self.db: Dict[str, Any] = json.load(f)
         self.entries: List[Dict[str, Any]] = self.db.get("entries", [])
-        # precompute tokens
+
+        # Precompute tokenized patterns/synonyms
         for e in self.entries:
             e["_pat_tokens"] = [_pattern_tokens(p) for p in e.get("patterns", [])]
             e["_syn_tokens"] = [_pattern_tokens(s) for s in e.get("synonyms", [])]
 
     def _score_entry(self, text_tokens: set, entry: Dict[str, Any]) -> Tuple[float, str, float]:
-        """
-        Returns (total_score, matched_terms_str, strongest_single_pattern_score)
-        Patterns = full/partial 1.0 / 0.7 / 0.4
-        Synonyms = half weight
-        """
         matched_terms: List[str] = []
         score = 0.0
-        pat_max = 0.0
 
-        # Patterns (primary)
+        # Patterns (primary, also track strongest single hit)
+        pat_max = 0.0
         for toks in entry.get("_pat_tokens", []):
             s, hits = _match_score(text_tokens, toks)
             if s > 0:
@@ -90,6 +91,7 @@ class RuleEngine:
                 score += s * 0.5
                 matched_terms.extend(hits)
 
+        # Dedup for debug readability
         if matched_terms:
             seen = set()
             uniq = []
@@ -118,23 +120,25 @@ class RuleEngine:
                 best_match_str = matched_str
                 best_pat_max = pat_max
 
-        confidence = max(0.0, min(best_score / 1.8, 1.0))
+        # Slightly friendlier normalization (1.6 instead of 1.8)
+        confidence = max(0.0, min(best_score / 1.6, 1.0))
+
         result = {
             "language": lang,
             "intent": best_entry["intent"] if best_entry else None,
             "confidence": confidence,
             "answer": None,
             "safety_notes": best_entry.get("safety_notes", []) if best_entry else [],
-            "matched": best_match_str
+            "matched": best_match_str,
         }
         if best_entry:
             answers = best_entry.get("answers", {})
             result["answer"] = answers.get(lang) or answers.get("en") or ""
         return result
 
-    def trace(self, text: str, lang_hint: str | None = None, top_k: int = 8) -> Dict[str, Any]:
+    def trace(self, text: str, lang_hint: str | None = None, top_k: int = 12) -> Dict[str, Any]:
         """
-        Debug: return per-intent scores so you can see why a message matched (or not).
+        Debug detail: per-intent scores and matched terms.
         """
         lang = detect_language(text, hint=lang_hint)
         text_tokens = _token_set(text)
@@ -148,10 +152,5 @@ class RuleEngine:
                 "pat_max": round(pat_max, 3),
                 "matched_terms": matched_str
             })
-
         scored.sort(key=lambda x: (x["score"], x["pat_max"]), reverse=True)
-        return {
-            "language": lang,
-            "text_tokens": sorted(list(text_tokens)),
-            "top": scored[:top_k]
-        }
+        return {"language": lang, "text_tokens": sorted(list(text_tokens)), "top": scored[:top_k]}
