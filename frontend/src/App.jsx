@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { chat, uploadImage } from "./api";
 import "./styles.css";
+import { chatStream } from "./api";
 
 /* ---- constants / helpers ---- */
 const THEME_KEY = "pth_theme";
@@ -198,40 +199,74 @@ export default function App() {
   }
 
   async function send() {
-    const text = input.trim();
-    if (!text || !active) return;
+  const text = input.trim();
+  if (!text || !active) return;
 
-    const now = Date.now();
-    if (lastSendRef.current.text === text && now - lastSendRef.current.t < 1200)
-      return;
-    lastSendRef.current = { text, t: now };
+  // de-dupe guard
+  const now = Date.now();
+  if (lastSendRef.current.text === text && now - lastSendRef.current.t < 1200) return;
+  lastSendRef.current = { text, t: now };
 
-    if (sendingRef.current) return;
-    sendingRef.current = true;
+  if (sendingRef.current) return;
+  sendingRef.current = true;
 
-    setInput("");
-    setBusy(true);
-    appendUserMessage(text);
+  setInput("");
+  setBusy(true);
+  appendUserMessage(text);
 
-    try {
-      const resp = await chat({
-        message: text,
-        allow_ai_fallback: true,
-      });
+  // create an empty assistant bubble we will stream into
+  let assistantIndex = -1;
+  setActiveSession((s) => {
+    const msgs = [...s.messages, { role: "assistant", text: "" }];
+    assistantIndex = msgs.length - 1;
+    return { ...s, messages: msgs };
+  });
 
-      const intent = resp?.reasoning?.intent ?? resp?.intent ?? null;
-      const replyLang = resp?.language || "en";
-      const finalText = maybeAttachNote(resp?.reply || "", intent, replyLang);
+  let acc = "";
+  try {
+    await chatStream(
+      { message: text, allow_ai_fallback: true },
+      (chunk) => {
+        if (!chunk) return;
+        acc += chunk;
 
-      appendAssistantMessage(finalText);
-    } catch (e) {
-      appendAssistantMessage("Server error: " + (e?.message || ""));
-    } finally {
-      setBusy(false);
-      sendingRef.current = false;
-      requestAnimationFrame(() => inputRef.current?.focus());
-    }
+        // live-update the last assistant message
+        setActiveSession((s) => {
+          const msgs = s.messages.slice();
+          if (assistantIndex >= 0 && assistantIndex < msgs.length) {
+            msgs[assistantIndex] = { ...msgs[assistantIndex], text: acc };
+          }
+          return { ...s, messages: msgs };
+        });
+      }
+    );
+
+    // If you want to append the safety note only at the end, uncomment:
+    // const final = maybeAttachNote(acc, null, "en");
+    // setActiveSession((s) => {
+    //   const msgs = s.messages.slice();
+    //   msgs[assistantIndex] = { ...msgs[assistantIndex], text: final };
+    //   return { ...s, messages: msgs };
+    // });
+
+  } catch (e) {
+    // replace the streaming bubble with an error
+    setActiveSession((s) => {
+      const msgs = s.messages.slice();
+      if (assistantIndex >= 0 && assistantIndex < msgs.length) {
+        msgs[assistantIndex] = {
+          role: "assistant",
+          text: "Server error: " + (e?.message || ""),
+        };
+      }
+      return { ...s, messages: msgs };
+    });
+  } finally {
+    setBusy(false);
+    sendingRef.current = false;
+    requestAnimationFrame(() => inputRef.current?.focus());
   }
+}
 
   function onKeyDown(e) {
     if (e.repeat) return;

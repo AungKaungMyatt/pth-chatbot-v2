@@ -97,3 +97,22 @@ export async function uploadImage(file) {
     clear();
   }
 }
+
+export async function chatStream(p, onChunk) {
+  const res = await fetch(`${BASE}/api/chat/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(p),
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => res.statusText);
+    throw new Error(`Stream failed: ${res.status} ${txt}`);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    onChunk(decoder.decode(value, { stream: true }));
+  }
+}

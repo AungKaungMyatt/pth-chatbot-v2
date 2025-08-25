@@ -1,28 +1,107 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from typing import Optional
 import time
+import os
 
-from app.models import ChatRequest, ChatResponse, Reasoning, AnalyzeRequest, RiskReport, RiskFinding
+from pydantic import BaseModel
+from openai import OpenAI
+
+from app.models import (
+    ChatRequest, ChatResponse, Reasoning,
+    AnalyzeRequest, RiskReport, RiskFinding
+)
 from app.engine.rule_engine import RuleEngine
 from app.engine.scam_detector import ScamDetector
 from app.engine.fallback import AIFallback
 from app.nlp.redactor import redact
 from app.utils.logger import log_event, tail_jsonl
 
-from pydantic import BaseModel
-
 router = APIRouter()
 rules = RuleEngine("data/knowledge.json")
 scams = ScamDetector()
 ai = AIFallback()
 
-
+# ---------- Models used by admin/trace ----------
 class TraceReq(BaseModel):
     message: str
     lang_hint: Optional[str] = None
     top_k: int = 8
 
+# ===============   STREAMING CHAT   ===================
+# New: stream the assistant reply so long answers don't time out.
+# Frontend: call POST /api/chat/stream and read the response body as a stream.
 
+_OPENAI_MODEL = os.environ.get("AT_MODEL", "gpt-4o-mini")
+_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
+_SYSTEM_PROMPT = (
+    "You are Pyit Tine Htaung, a helpful banking cybersecurity guide. "
+    "Answer clearly and concisely. Never request or accept OTP/PIN or any "
+    "account credentials. If the user writes Burmese, answer in Burmese."
+)
+
+_BANNER_EN = (
+    "\n\n**Note:** I’m an educational assistant, not your bank. "
+    "Never share OTP/PIN. For account matters, contact your bank directly."
+)
+_BANNER_MY = (
+    "\n\n**မှတ်ချက်:** ဤကိရိယာသည် ပညာပေးအတွက်သာ ဖြစ်ပြီး သင့်ဘဏ်မဟုတ်ပါ။ "
+    "OTP/PIN မမျှဝေပါနှင့်။ အကောင့်ဆိုင်ရာအတွက် တရားဝင် App/Website သို့မဟုတ် "
+    "Hotline ကိုသာ သုံးပါ။"
+)
+
+@router.post("/chat/stream")
+def chat_stream(req: ChatRequest):
+    """
+    Streamed chat response. Media type is text/plain so the frontend can
+    read chunks via ReadableStream. We append the safety banner at the end.
+    """
+    t0 = time.perf_counter()
+
+    # Build the OpenAI message list
+    messages = [
+        {"role": "system", "content": _SYSTEM_PROMPT},
+        {"role": "user", "content": req.message},
+    ]
+
+    # Use environment variable MAX_TOKENS if you set it (optional)
+    max_tokens = int(os.environ.get("MAX_TOKENS", "900"))
+
+    def gen():
+        acc = ""
+        try:
+            stream = _client.chat.completions.create(
+                model=_OPENAI_MODEL,
+                messages=messages,
+                temperature=0.2,
+                max_tokens=max_tokens,
+                stream=True,
+            )
+            for event in stream:
+                delta = event.choices[0].delta.content or ""
+                if delta:
+                    acc += delta
+                    # yield as soon as we have some text
+                    yield delta
+        except Exception as e:
+            # Send a readable error at the end of the stream
+            yield f"\n\n[error] {str(e)}"
+        else:
+            # Append the safety banner at the end (language-aware if you want)
+            # We keep it simple: detect Myanmar characters presence in the user msg.
+            is_burmese = any("\u1000" <= ch <= "\u109F" for ch in req.message)
+            yield _BANNER_MY if is_burmese else _BANNER_EN
+        finally:
+            try:
+                duration_ms = int((time.perf_counter() - t0) * 1000)
+                log_event("chat_stream", duration_ms=duration_ms, msg=redact(req.message)[:400])
+            except Exception:
+                pass
+
+    return StreamingResponse(gen(), media_type="text/plain")
+
+# ===============   NON-STREAM CHAT   ==================
 @router.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
     t0 = time.perf_counter()
@@ -34,17 +113,15 @@ async def chat(req: ChatRequest):
     lang = m.get("language", "en")
     used_ai = False
 
-    # ---- Scope guard: personal account actions should always return the canned scope-safe answer
+    # ---- Scope guard
     if m.get("intent") == "personal_account_scope":
         reply = m["answer"]
 
-    # ---- AI fallback (more generous threshold + error logging)
-    # Was 0.45 in your file; bumping to 0.55 so borderline cases can still help users while you improve rules.
+    # ---- AI fallback (slightly more generous threshold)
     if conf < 0.55 and req.allow_ai_fallback:
         try:
             ai_ans = await ai.answer(req.message, lang)
         except Exception as e:
-            # surface the issue in logs; do not crash the request
             try:
                 log_event("chat_ai_error", error=str(e)[:400])
             except Exception:
@@ -55,7 +132,7 @@ async def chat(req: ChatRequest):
             reply = ai_ans
             used_ai = True
 
-    # ---- Safe default if still empty (never return a blank reply)
+    # ---- Safe default if still empty
     if not reply:
         reply = (
             "I can’t fully confirm this from my rules. "
@@ -67,20 +144,11 @@ async def chat(req: ChatRequest):
                  "လိမ်လည်မှုဖြစ်နိုင်ပါက Link မနှိပ်ပါနှင့်၊ OTP/PIN မမျှဝေပါနှင့်။"
         )
 
-    # ---- Safety banner + redaction (keep your behavior)
-    banner = (
-        "\n\n**Note:** I’m an educational assistant, not your bank. "
-        "Never share OTP/PIN. For account matters, contact your bank directly."
-    )
-    if lang == "my":
-        banner = (
-            "\n\n**မှတ်ချက်:** ငါသည် အကြံပညာပေးကူညီရေးဝန်ဆောင်မှုဖြစ်ပြီး သင့်ဘဏ်မဟုတ်ပါ။ "
-            "OTP/PIN မမျှဝေပါနှင့်။ ကိုယ်ရေးအကောင့်ဆိုင်ရာအတွက် ဘဏ်နှင့်တိုက်ရိုက်ဆက်သွယ်ပါ။"
-        )
-
+    # ---- Safety banner + redaction
+    banner = _BANNER_MY if lang == "my" else _BANNER_EN
     safe_reply = redact(reply) + banner
 
-    # ---- LOG (keep your structured fields)
+    # ---- LOG
     duration_ms = int((time.perf_counter() - t0) * 1000)
     try:
         log_event(
@@ -109,7 +177,7 @@ async def chat(req: ChatRequest):
         ),
     )
 
-
+# ==================   ANALYZE   =======================
 @router.post("/analyze", response_model=RiskReport)
 async def analyze_text(req: AnalyzeRequest):
     if not (req.text or req.urls):
@@ -138,7 +206,7 @@ async def analyze_text(req: AnalyzeRequest):
         language=res["language"],
     )
 
-
+# ==================   UPLOAD   ========================
 @router.post("/upload", response_model=RiskReport)
 async def upload_file(file: UploadFile = File(...)):
     # OCR is optional; if not available, we proceed with empty text safely
@@ -188,25 +256,16 @@ async def upload_file(file: UploadFile = File(...)):
         language=res["language"],
     )
 
-
-# ---------- Admin/debug ----------
-
+# ==================   ADMIN   =========================
 @router.get("/admin/logs/tail")
 async def logs_tail(n: int = Query(200, ge=1, le=1000)):
-    """
-    Get the latest N log events (redacted).
-    """
+    """Get the latest N log events (redacted)."""
     return {"events": tail_jsonl(n)}
-
 
 @router.post("/admin/trace")
 async def trace(req: TraceReq):
-    """
-    See how the rule engine scores your message across intents.
-    Useful to debug mismatches (why intent X didn't win).
-    """
+    """Score a message across intents to debug rule matches."""
     out = rules.trace(req.message, lang_hint=req.lang_hint, top_k=req.top_k)
-    # also log that a trace was requested (no message content, only length)
     try:
         log_event("trace", msg_len=len(req.message), lang=out.get("language"))
     except Exception:
