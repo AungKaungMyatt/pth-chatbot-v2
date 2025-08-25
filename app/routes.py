@@ -16,11 +16,23 @@ from app.engine.scam_detector import ScamDetector
 from app.engine.fallback import AIFallback
 from app.nlp.redactor import redact
 from app.utils.logger import log_event, tail_jsonl
+from app.engine.rule_engine import scope_check, is_burmese
 
 router = APIRouter()
 rules = RuleEngine("data/knowledge.json")
 scams = ScamDetector()
 ai = AIFallback()
+
+OUT_OF_SCOPE_EN = (
+    "I’m focused on **banking** and **cybersecurity** only "
+    "(phishing/smishing/vishing, OTP/PIN safety, mobile wallets/QR scams, "
+    "SIM swap, card & account security). Please ask within those topics."
+)
+OUT_OF_SCOPE_MY = (
+    "ပစ်တိုင်းထောင်သည် **ဘဏ်လုပ်ငန်းနှင့် ဆိုက်ဘာလုံခြုံရေး** ဆိုင်ရာ မေးခွန်းများအတွက်သာ ဖြစ်သည်။ "
+    "ဥပမာ — phishing/လိမ်လည်မှု၊ OTP/PIN လုံခြုံရေး၊ မိုဘိုင်းပိုက်ဆက်/QR လိမ်လည်မှု၊ "
+    "SIM swap၊ ကတ်/အကောင့် လုံခြုံရေး စသဖြင့် မေးပါ။"
+)
 
 # ---------- Models used by admin/trace ----------
 class TraceReq(BaseModel):
@@ -36,9 +48,10 @@ _OPENAI_MODEL = os.environ.get("AT_MODEL", "gpt-4o-mini")
 _client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 _SYSTEM_PROMPT = (
-    "You are Pyit Tine Htaung, a helpful banking cybersecurity guide. "
-    "Answer clearly and concisely. Never request or accept OTP/PIN or any "
-    "account credentials. If the user writes Burmese, answer in Burmese."
+    "You are Pyit Tine Htaung, a Myanmar banking cybersecurity guide. "
+    "STRICTLY answer only banking or cybersecurity questions; if out of scope, "
+    "refuse briefly and redirect to allowed topics. Never request/accept OTP/PIN "
+    "or account credentials. If the user writes Burmese, answer in Burmese."
 )
 
 _BANNER_EN = (
@@ -46,7 +59,7 @@ _BANNER_EN = (
     "Never share OTP/PIN. For account matters, contact your bank directly."
 )
 _BANNER_MY = (
-    "\n\n**မှတ်ချက်:** ဤကိရိယာသည် ပညာပေးအတွက်သာ ဖြစ်ပြီး သင့်ဘဏ်မဟုတ်ပါ။ "
+    "\n\n**မှတ်ချက်:** ပစ်တိုင်းထောင်သည် ပညာပေးအတွက်သာ ဖြစ်ပြီး သင့်ဘဏ်မဟုတ်ပါ။ "
     "OTP/PIN မမျှဝေပါနှင့်။ အကောင့်ဆိုင်ရာအတွက် တရားဝင် App/Website သို့မဟုတ် "
     "Hotline ကိုသာ သုံးပါ။"
 )
@@ -54,9 +67,17 @@ _BANNER_MY = (
 @router.post("/chat/stream")
 def chat_stream(req: ChatRequest):
     """
-    Streamed chat response. Media type is text/plain so the frontend can
-    read chunks via ReadableStream. We append the safety banner at the end.
+    Streamed chat response. Media type is text/plain so the frontend
+    can read chunks via ReadableStream. We append the safety banner at the end.
     """
+    # ---- HARD-LIMIT (one scope check at the very top)
+    in_scope, lang_gate = scope_check(req.message)
+    if not in_scope:
+        msg = OUT_OF_SCOPE_MY if lang_gate == "my" else OUT_OF_SCOPE_EN
+        banner = _BANNER_MY if lang_gate == "my" else _BANNER_EN
+        # Stream the refusal line (optionally with banner)
+        return StreamingResponse(iter([msg + banner]), media_type="text/plain")
+
     t0 = time.perf_counter()
 
     # Build the OpenAI message list
@@ -65,11 +86,9 @@ def chat_stream(req: ChatRequest):
         {"role": "user", "content": req.message},
     ]
 
-    # Use environment variable MAX_TOKENS if you set it (optional)
     max_tokens = int(os.environ.get("MAX_TOKENS", "900"))
 
     def gen():
-        acc = ""
         try:
             stream = _client.chat.completions.create(
                 model=_OPENAI_MODEL,
@@ -81,17 +100,14 @@ def chat_stream(req: ChatRequest):
             for event in stream:
                 delta = event.choices[0].delta.content or ""
                 if delta:
-                    acc += delta
-                    # yield as soon as we have some text
                     yield delta
+            # After the model finishes, append your banner in the user’s language
+            yield _BANNER_MY if is_burmese(req.message) else _BANNER_EN
+
         except Exception as e:
             # Send a readable error at the end of the stream
             yield f"\n\n[error] {str(e)}"
-        else:
-            # Append the safety banner at the end (language-aware if you want)
-            # We keep it simple: detect Myanmar characters presence in the user msg.
-            is_burmese = any("\u1000" <= ch <= "\u109F" for ch in req.message)
-            yield _BANNER_MY if is_burmese else _BANNER_EN
+
         finally:
             try:
                 duration_ms = int((time.perf_counter() - t0) * 1000)
@@ -105,6 +121,20 @@ def chat_stream(req: ChatRequest):
 @router.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
     t0 = time.perf_counter()
+        # --- HARD-LIMIT: Banking + Cybersecurity only ---
+    in_scope, lang_gate = scope_check(req.message)
+    if not in_scope:
+        banner = _BANNER_MY if lang_gate == "my" else _BANNER_EN
+        return ChatResponse(
+            reply=(OUT_OF_SCOPE_MY if lang_gate == "my" else OUT_OF_SCOPE_EN) + banner,
+            language=lang_gate,
+            reasoning=Reasoning(
+                intent="out_of_scope",
+                confidence=1.0,
+                matched="",
+                safety_notes=[],
+            ),
+        )
 
     # ---- Rule-based first
     m = rules.match(req.message, lang_hint=req.lang_hint)

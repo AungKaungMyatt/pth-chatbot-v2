@@ -5,6 +5,54 @@ import regex as re
 from typing import Any, Dict, List, Tuple
 from app.nlp.lang import normalize, detect_language
 
+# --- Scope guard: only Banking + Cybersecurity (EN + Burmese) --------------
+from typing import Tuple
+import re
+
+BANKING_KWS_EN = {
+    "bank","atm","account","transfer","wire","swift","debit","credit","loan",
+    "card","wallet","qr","statement","pin","otp","kyc","balance","branch",
+    "mobile banking","internet banking"
+}
+CYBER_KWS_EN = {
+    "phishing","smishing","vishing","scam","malware","spyware","ransomware",
+    "sim swap","password","2fa","mfa","breach","spoof","impersonation","fraud"
+}
+
+_MM_RE = re.compile(r"[\u1000-\u109F]")
+
+BANKING_KWS_MY = {
+    "ဘဏ်","အာတီအမ်","ဘဏ်စာရင်း","ငွေလွှဲ","ငွေသွင်း","ငွေထုတ်","ကတ်","QR","ပိုက်ဆက်",
+    "အီးဘဏ်","မိုဘိုင်းဘဏ်","ပီအိုင်အန်","အော်တီပီ","KYC","ဘဏ်ခွဲ"
+}
+CYBER_KWS_MY = {
+    "လိမ်လည်","phishing","smishing","vishing","စကားဝှက်","၂အဆင့်","OTP",
+    "SIM swap","အကောင့်ဝင်","ထိုးဖောက်","မယ်လ်ဝဲ","ကွန်ပျူတာလုံခြုံရေး"
+}
+
+def is_burmese(text: str) -> bool:
+    return bool(_MM_RE.search(text or ""))
+
+def scope_check(text: str) -> Tuple[bool, str]:
+    """
+    Heuristic gate. Returns (in_scope, lang) where lang is 'my' or 'en'.
+    In-scope if any allowlisted keyword appears (EN or Burmese).
+    """
+    if not text:
+        return False, "en"
+    lang_hint = "my" if is_burmese(text) else "en"
+    t = text.lower()
+
+    for kw in BANKING_KWS_EN | CYBER_KWS_EN:
+        if kw in t:
+            return True, lang_hint
+
+    for kw in BANKING_KWS_MY | CYBER_KWS_MY:
+        if kw in text:
+            return True, lang_hint
+
+    return False, lang_hint
+
 # ---------- token helpers ----------
 _WORD_RE = re.compile(r"[a-z0-9\u1000-\u109F]+", re.IGNORECASE)
 
