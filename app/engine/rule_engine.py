@@ -5,53 +5,87 @@ import regex as re
 from typing import Any, Dict, List, Tuple
 from app.nlp.lang import normalize, detect_language
 
-# --- Scope guard: only Banking + Cybersecurity (EN + Burmese) --------------
-from typing import Tuple
-import re
+# app/engine/rule_engine.py
 
-BANKING_KWS_EN = {
-    "bank","atm","account","transfer","wire","swift","debit","credit","loan",
-    "card","wallet","qr","statement","pin","otp","kyc","balance","branch",
-    "mobile banking","internet banking"
-}
-CYBER_KWS_EN = {
-    "phishing","smishing","vishing","scam","malware","spyware","ransomware",
-    "sim swap","password","2fa","mfa","breach","spoof","impersonation","fraud"
-}
+def _contains_myanmar(text: str) -> bool:
+    # quick check: any Burmese char
+    return any("\u1000" <= ch <= "\u109F" for ch in text or "")
 
-_MM_RE = re.compile(r"[\u1000-\u109F]")
+# ----------- SIMPLE, EDITABLE VOCAB -----------
+# If a phrase is present (substring match), it's considered in-scope.
+# Keep this list short & meaningful; it's already quite broad.
+EN_KEYWORDS = (
+    # Cybersecurity (general + subfields)
+    "cyber", "security", "infosec", "cybersecurity", "zero trust", "zerotrust",
+    "phish", "smish", "vish", "spear phish", "social engineering",
+    "malware", "virus", "worm", "trojan", "ransom", "ransomware", "spyware",
+    "ddos", "botnet",
+    "vulnerability", "vulnerabilities", "cve", "cvss", "patch", "patching",
+    "threat intelligence", "siem", "soc", "edr", "mdm", "xdr",
+    "iam", "access control", "least privilege",
+    "mfa", "2fa", "otp", "pin", "password", "passkey", "password manager",
+    "encryption", "decrypt", "ssl", "tls", "vpn", "firewall", "ids", "ips",
+    "wifi", "bluetooth", "qr code", "qr scam",
+    "forensic", "incident response", "risk assessment", "pen test", "pentest",
+    "red team", "blue team", "mitre", "owasp", "api security", "mobile security",
+    "sql injection", "xss", "csrf", "buffer overflow", "zero day", "zeroday",
+    "data breach", "breach",
 
-BANKING_KWS_MY = {
-    "ဘဏ်","အာတီအမ်","ဘဏ်စာရင်း","ငွေလွှဲ","ငွေသွင်း","ငွေထုတ်","ကတ်","QR","ပိုက်ဆက်",
-    "အီးဘဏ်","မိုဘိုင်းဘဏ်","ပီအိုင်အန်","အော်တီပီ","KYC","ဘဏ်ခွဲ"
-}
-CYBER_KWS_MY = {
-    "လိမ်လည်","phishing","smishing","vishing","စကားဝှက်","၂အဆင့်","OTP",
-    "SIM swap","အကောင့်ဝင်","ထိုးဖောက်","မယ်လ်ဝဲ","ကွန်ပျူတာလုံခြုံရေး"
-}
+    # Banking (general + payments)
+    "bank", "branch", "account", "balance", "statement", "transfer", "remittance",
+    "atm", "card", "debit", "credit", "pos", "pin", "swift", "iban",
+    "loan", "interest", "mortgage", "savings", "deposit", "withdraw",
+    "kyc", "aml", "anti-money laundering", "fraud", "scam",
+    "mobile banking", "internet banking", "wallet", "qr payment",
 
-def is_burmese(text: str) -> bool:
-    return bool(_MM_RE.search(text or ""))
+    # Myanmar payments/banks commonly used
+    "kbz", "kbzpay", "wave", "ok dollar", "okdollar", "cbpay", "aya pay", "ayapay",
+    "mpu", "cb bank", "aya bank", "uab", "yoma bank",
+)
 
-def scope_check(text: str) -> Tuple[bool, str]:
+# Common Myanmar equivalents (write plain Myanmar text + brand names)
+MY_KEYWORDS = (
+    # Cybersecurity (Myanmar words & common English tokens users type)
+    "ဆိုက်ဘာ", "လုံခြုံ", "လုံခြုံရေး", "လိမ်", "လိမ်လည်", "ဖိရှ်", "ဖိရှင်း", "ဗစ်ရှင်း", "စမစ်ရှင်း",
+    "မော်လ်ဝဲ", "ဗိုင်းရပ်", "ရေနှောင့်", "ရဲန်ဆမ်ဝဲ", "စကားဝှက်", "OTP", "PIN",
+    "အန္တရာယ်", "တားဆီး", "firewall", "vpn", "wifi", "qr", "qr လိမ်လည်",
+
+    # Banking (Myanmar + brands)
+    "ဘဏ်", "အကောင့်", "လွှဲ", "ငွေလွှဲ", "ငွေဖြုတ်", "ငွေသွင်း", "အတိုး", "ချေးငွေ", "statement",
+    "ကတ်", "atm", "qr", "wallet", "kyc", "aml",
+    "kbz", "kbzpay", "wave", "ok dollar", "cbpay", "aya", "aya pay", "mpu",
+)
+
+# Optional: light-weight “stems” so variants match (e.g., secure/security/securing)
+EN_STEMS = ("secur", "encrypt", "authent", "fraud", "phish", "ransom", "vulnerab")
+MY_STEMS = ()  # Burmese is better handled by explicit words/brands above.
+
+def _match_any_substring(text: str, needles: tuple[str, ...]) -> bool:
+    t = text.casefold()
+    return any(n.casefold() in t for n in needles)
+
+def _match_any_stem(text: str, stems: tuple[str, ...]) -> bool:
+    t = text.casefold()
+    return any(stem in t for stem in stems)
+
+def scope_check(user_text: str) -> tuple[bool, str]:
     """
-    Heuristic gate. Returns (in_scope, lang) where lang is 'my' or 'en'.
-    In-scope if any allowlisted keyword appears (EN or Burmese).
+    Returns: (in_scope: bool, lang: 'my'|'en')
+
+    Policy:
+    - Allow ONLY cybersecurity or banking topics.
+    - Deny everything else (frontend shows your out-of-scope message).
     """
-    if not text:
+    if not user_text or not user_text.strip():
         return False, "en"
-    lang_hint = "my" if is_burmese(text) else "en"
-    t = text.lower()
 
-    for kw in BANKING_KWS_EN | CYBER_KWS_EN:
-        if kw in t:
-            return True, lang_hint
+    lang = "my" if _contains_myanmar(user_text) else "en"
 
-    for kw in BANKING_KWS_MY | CYBER_KWS_MY:
-        if kw in text:
-            return True, lang_hint
+    # Substring phrases + lightweight stems
+    en_hit = _match_any_substring(user_text, EN_KEYWORDS) or _match_any_stem(user_text, EN_STEMS)
+    my_hit = _match_any_substring(user_text, MY_KEYWORDS) or _match_any_stem(user_text, MY_STEMS)
 
-    return False, lang_hint
+    return (en_hit or my_hit), lang
 
 # ---------- token helpers ----------
 _WORD_RE = re.compile(r"[a-z0-9\u1000-\u109F]+", re.IGNORECASE)
