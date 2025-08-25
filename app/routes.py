@@ -16,7 +16,8 @@ from app.engine.scam_detector import ScamDetector
 from app.engine.fallback import AIFallback
 from app.nlp.redactor import redact
 from app.utils.logger import log_event, tail_jsonl
-from app.engine.rule_engine import scope_check, is_burmese
+from app.engine.rule_engine import scope_check
+from app.nlp.lang import is_burmese
 
 router = APIRouter()
 rules = RuleEngine("data/knowledge.json")
