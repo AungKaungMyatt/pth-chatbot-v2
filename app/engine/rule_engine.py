@@ -220,7 +220,6 @@ def _render_answer(ans: Any, lang: str) -> str:
         return parts[0]
     return "\n".join(f"• {p}" for p in parts)
 
-
 # =========================
 # ===== Scope Check =======
 # =========================
