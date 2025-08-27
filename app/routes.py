@@ -7,7 +7,7 @@ import json
 from collections import defaultdict, deque
 
 from pydantic import BaseModel
-from openai import OpenAI
+from openai import OpenAI  # safe to import; we won't construct a client until needed
 
 from app.models import (
     ChatRequest, ChatResponse, Reasoning,
@@ -44,9 +44,18 @@ class TraceReq(BaseModel):
     lang_hint: Optional[str] = None
     top_k: int = 8
 
-# ---------------- OPENAI ----------------
+# ---------------- OPENAI (lazy) ----------------
 _OPENAI_MODEL = os.environ.get("AT_MODEL", "gpt-4o-mini")
-_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
+def _get_openai_client():
+    """Create OpenAI client only when we actually need it."""
+    key = os.environ.get("OPENAI_API_KEY")
+    if not key:
+        return None
+    try:
+        return OpenAI(api_key=key)
+    except Exception:
+        return None
 
 _SYSTEM_PROMPT = (
     "You are Pyit Tine Htaung, a Myanmar banking cybersecurity guide. "
@@ -115,7 +124,6 @@ def get_escalation(intent: str, lang: str):
 
 # Ask AI to CONTINUE the same scenario (next 1–2 actions), not restart
 async def ai_continue(ai_obj, sess, user_msg: str, lang: str):
-    # Build compact context from short history; AIFallback can use it
     system = (
         "You are a banking/cybersecurity assistant. Continue the SAME troubleshooting scenario. "
         "Do not restart from step 1 unless the user asked to reset. "
@@ -132,12 +140,13 @@ async def ai_continue(ai_obj, sess, user_msg: str, lang: str):
     except Exception:
         return None
 
-# Confidence thresholds (aligned to RuleEngine normalization score/1.6)
+# Confidence thresholds (RuleEngine normalizes to ~0..1 range)
 CONF_STRONG = 0.75   # strong rule hit → trust rules
-CONF_WEAK   = 0.55   # below this → prefer AI fallback/continuation
-# (RuleEngine confidence source: normalized divide-by-1.6)  # :contentReference[oaicite:2]{index=2}
+CONF_WEAK   = 0.55   # weak rule hit → prefer AI (or continuation if follow-up)
 
+# ==================================================
 # ===============   STREAMING CHAT   ===============
+# ==================================================
 @router.post("/chat/stream")
 async def chat_stream(req: ChatRequest):
     # ---- HARD-LIMIT (scope check)
@@ -190,7 +199,7 @@ async def chat_stream(req: ChatRequest):
                     sess["hist"].append(("assistant", cont))
                     banner = _BANNER_MY if lang == "my" else _BANNER_EN
                     return StreamingResponse(iter([cont + banner]), media_type="text/plain")
-            # If weak rule hit, prefer AI normal over LLM streaming w/o context
+            # Weak rule hit → prefer continuation instead of raw LLM stream
             if conf < CONF_WEAK and getattr(req, "allow_ai_fallback", True):
                 cont = await ai_continue(ai, sess, req.message, lang)
                 if cont:
@@ -198,7 +207,15 @@ async def chat_stream(req: ChatRequest):
                     banner = _BANNER_MY if lang == "my" else _BANNER_EN
                     return StreamingResponse(iter([cont + banner]), media_type="text/plain")
 
-    # ---- Otherwise, call the model normally
+    # ---- Otherwise, call the model normally (guarded by lazy client)
+    client = _get_openai_client()
+    if not client:
+        banner = _BANNER_MY if lang == "my" else _BANNER_EN
+        msg = ("Service temporarily unavailable (missing AI key)."
+               if lang == "en" else
+               "ဝန်ဆောင်မှု မရနိုင်သေးပါ (AI key မရှိပါ).")
+        return StreamingResponse(iter([msg + banner]), media_type="text/plain")
+
     messages = [
         {"role": "system", "content": _SYSTEM_PROMPT},
         {"role": "user", "content": f"[language:{lang}] {req.message}"},
@@ -207,7 +224,7 @@ async def chat_stream(req: ChatRequest):
 
     async def gen():
         try:
-            stream = _client.chat.completions.create(
+            stream = client.chat.completions.create(
                 model=_OPENAI_MODEL,
                 messages=messages,
                 temperature=0.2,
@@ -235,7 +252,9 @@ async def chat_stream(req: ChatRequest):
 
     return StreamingResponse(gen(), media_type="text/plain")
 
+# ==================================================
 # ===============   NON-STREAM CHAT  ===============
+# ==================================================
 @router.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
     t0 = time.perf_counter()
@@ -306,7 +325,7 @@ async def chat(req: ChatRequest):
             conf = max(conf, 0.9)
         else:
             # No flow defined → AI continuation for follow-ups (keeps scenario going)
-            if is_fup and req.allow_ai_fallback:
+            if is_fup and req.allow_ai_fallback and _get_openai_client() is not None:
                 ai_ans = await ai_continue(ai, sess, req.message, lang)
                 if ai_ans:
                     reply = ai_ans
@@ -315,21 +334,22 @@ async def chat(req: ChatRequest):
 
     # Confidence-aware fallback logic
     if not reply:
-        # Strong rule hit → use rule answer
-        if conf >= CONF_STRONG:
+        strong = conf >= CONF_STRONG
+        weak   = conf < CONF_WEAK
+
+        if strong:
             reply = m.get("answer") or ""
-        # Medium → prefer rule, but if follow-up and AI allowed, try continuation
-        elif CONF_WEAK <= conf < CONF_STRONG:
+        elif not weak:
+            # medium: prefer rule answer, but try continuation if follow-up & AI available
             reply = m.get("answer") or ""
-            if is_fup and req.allow_ai_fallback:
+            if is_fup and req.allow_ai_fallback and _get_openai_client() is not None:
                 ai_ans = await ai_continue(ai, sess, req.message, lang)
                 if ai_ans:
                     reply = ai_ans
                     used_ai = True
-        # Weak → prefer AI (either continuation if follow-up, or normal)
         else:
-            if req.allow_ai_fallback:
-                # try continuation first
+            # weak: prefer AI (continuation first if follow-up)
+            if req.allow_ai_fallback and _get_openai_client() is not None:
                 if is_fup:
                     ai_ans = await ai_continue(ai, sess, req.message, lang)
                 else:
@@ -340,7 +360,6 @@ async def chat(req: ChatRequest):
 
     # ---------- 4) Default if still empty ----------
     if not reply:
-        # Final fallback text
         reply = (
             "I can’t fully confirm this from my rules. "
             "Please use your bank’s official app/website or hotline for account actions. "
@@ -390,7 +409,9 @@ async def chat(req: ChatRequest):
         ),
     )
 
+# ==================================================
 # ===============   ANALYZE   ======================
+# ==================================================
 @router.post("/analyze", response_model=RiskReport)
 async def analyze_text(req: AnalyzeRequest):
     if not (req.text or req.urls):
@@ -413,7 +434,9 @@ async def analyze_text(req: AnalyzeRequest):
         language=res["language"],
     )
 
+# ==================================================
 # ===============   UPLOAD   =======================
+# ==================================================
 @router.post("/upload", response_model=RiskReport)
 async def upload_file(file: UploadFile = File(...)):
     try:
