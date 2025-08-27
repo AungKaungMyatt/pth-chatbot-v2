@@ -1,11 +1,11 @@
 {
   "meta": {
-    "version": "1.2",
+    "version": "2.0",
     "language": ["en", "my"],
     "jurisdiction": ["Myanmar"],
-    "notes": "Education only. No account access."
+    "notes": "Education only. No account access. Never request or accept OTP/PIN."
   },
-  "entries": [
+  "intents": [
     {
       "intent": "greeting",
       "patterns": [
@@ -57,7 +57,6 @@
       "examples": [
         "Hi there!",
         "How can you help me?",
-        "What can this chatbot do?",
         "မင်္ဂလာပါ ချတ်ဘော့",
         "ဘယ်လိုသုံးရမလဲ"
       ]
@@ -83,7 +82,6 @@
       "synonyms": [
         "balance check",
         "balance enquiry",
-        "balance inquiry",
         "wire transfer",
         "pay someone",
         "deposit check",
@@ -98,53 +96,6 @@
         "Never share OTP/PIN or full card numbers."
       ],
       "examples": ["Can you check my balance?", "ငွေဘယ်လောက်ကျန်လဲ?"]
-    },
-
-    {
-      "intent": "employee_phishing",
-      "patterns": [
-        "phish",
-        "suspicious email",
-        "fake email",
-        "malicious link",
-        "fraudulent message",
-        "email scam",
-        "phishing attempt",
-        "email fraud",
-        "verify email",
-        "is this email real",
-        "email safety",
-        "fishing email",
-        "အီးမေးလ် လိမ်လည်မှု",
-        "အွန်လိုင်း လှည့်စားမှု",
-        "အီးမေးလ် အန္တရာယ်",
-        "လင့်ခ် အန္တရာယ်",
-        "အီးမေးလ် စစ်ဆေးရန်"
-      ],
-      "synonyms": [
-        "spoofing",
-        "brand impersonation",
-        "dodgy",
-        "questionable",
-        "fishy",
-        "shady",
-        "harmful",
-        "dangerous",
-        "infected",
-        "phishing"
-      ],
-      "answers": {
-        "en": "Likely phishing. Don’t click links or open attachments. Report via the bank’s official security channel (internal portal/helpdesk) and delete it.",
-        "my": "လိမ်လည်မှုဖြစ်နိုင်ပါသည်။ လင့်ခ်နှိပ်ခြင်း/ပူးတွဲဖိုင်ဖွင့်ခြင်း မလုပ်ပါနှင့်။ ဘဏ်၏ တရားဝင် လုံခြုံရေး ချန်နယ် (အတွင်းပိုင်း portal/စခန်း) မှ တိုင်ကြားပြီး ဖျက်ပါ။"
-      },
-      "safety_notes": [
-        "Verify sender domain and real URL (hover).",
-        "Banks don’t ask for passwords by email."
-      ],
-      "examples": [
-        "Email from security@yourb4nk.com — is this real?",
-        "How do I know if an email is phishing?"
-      ]
     },
 
     {
@@ -185,15 +136,9 @@
         "text message fraud",
         "voice phishing",
         "phone scam",
-        "pretending",
         "otp",
         "one-time code",
         "2FA",
-        "limited time",
-        "suspend",
-        "locked",
-        "reactivate",
-        "confirm",
         "verify now",
         "update account",
         "အရေးပေါ်",
@@ -211,19 +156,357 @@
         "my": [
           "စာတို/မက်ဆေ့ခ်ျမှ လင့်ခ်နှင့် ပူးတွဲဖိုင် မဖွင့်ပါနှင့်။",
           "OTP/PIN မမျှဝေပါနှင့်—ဘဏ်များသည် SMS/ဖုန်းဖြင့် မတောင်းပါ။",
-          "မက်ဆေ့ခ်ျ တစ်စုံတစ်ရာကို အတည်ပြုရန် တရားဝင် App/Website ကို ကိုယ်တိုင် ဖွင့်ကြည့်ပါ။",
-          "ကိုယ်တိုင် ရှာဖွေခန့်မှန်းထားသော တရားဝင် နံပါတ်သို့ ဘဏ်ကို ခေါ်ပြန်ပါ။",
+          "အတည်ပြုရန် တရားဝင် App/Website ကို ကိုယ်တိုင်ဖွင့်ကြည့်ပါ။",
+          "ကိုယ်တိုင် ရှာဖွေမှ Traf အသိပေး နံပါတ်သို့ ခေါ်ပြန်ပါ။",
           "အဆိုပါ စာတို/ခေါ်ဆိုမှုကို ဘဏ်ထံ phishing ဟု တိုင်ကြားပါ။"
         ]
+      },
+      "flow": {
+        "en": [
+          "Open the **official app/website** yourself; never via the message link.",
+          "If you clicked already: **change your password**, **revoke device sessions** in security settings, and **run malware scan**.",
+          "Collect the **phone number/message screenshot** and **report** it to the bank’s fraud channel."
+        ],
+        "my": [
+          "အကျိုးအကြောင်း စစ်ဆေးရန် **တရားဝင် App/Website** ကို ကိုယ်တိုင်ဖွင့်ပါ; စာတိုတွင်ပါသော link မသုံးပါနှင့်။",
+          "ကြောင့်နှိပ်ပြီးသားဖြစ်ပါက **စကားဝှက်ပြောင်း**၊ **Device Session Revoke** ပြုလုပ်ပြီး **malware scan** ပြုလုပ်ပါ။",
+          "**ဖုန်းနံပါတ်/စာတို screenshot** ကို သိမ်းဆည်းပြီး ဘဏ်၏ Fraud ချန်နယ်သို့ **တိုင်ကြား** ပါ။"
+        ]
+      },
+      "escalation": {
+        "en": "If you entered credentials on a fake site, contact **fraud support** immediately and monitor transactions.",
+        "my": "မမှန်သော ဝဘ်ဆိုဒ်တွင် စကားဝှက်ထည့်ပြီးပါက **Fraud Support** သို့ ချက်ချင်း ဆက်သွယ်ပြီး transactions များကို စောင့်ကြည့်ပါ။"
       },
       "safety_notes": [
         "Type URLs yourself; never trust message links.",
         "Call back using the official number."
-      ],
-      "examples": [
-        "Text says my account is locked — real?",
-        "They told me to verify via a link"
       ]
+    },
+
+    {
+      "intent": "vishing_call",
+      "patterns": [
+        "phone call from bank",
+        "verify on call",
+        "voice phishing",
+        "caller asked otp",
+        "ဘဏ်က ခေါ်ဆို",
+        "ဖုန်းက otp တောင်း"
+      ],
+      "synonyms": [
+        "caller id shows bank",
+        "call center asked code",
+        "verify details over phone"
+      ],
+      "answers": {
+        "en": "Banks don’t ask OTP/PIN by phone. Hang up and call the official number from the card or the bank’s website.",
+        "my": "ဘဏ်များသည် ဖုန်းဖြင့် OTP/PIN မတောင်းပါ။ ဖုန်းဖြုတ်ပြီး ကတ်/ဝဘ်ဆိုဒ်တွင်ပါတာ တရားဝင် နံပါတ်သို့ ခေါ်ပြန်ပါ။"
+      },
+      "flow": {
+        "en": [
+          "Politely **hang up**; do not argue.",
+          "Call the **official hotline** you found yourself (card/website), not the number that called you.",
+          "If you revealed information, **change passwords** and **enable 2FA**."
+        ],
+        "my": [
+          "ယဉ်ကျေးစွာ **ဖုန်း ဖြုတ်ပါ**; အငြင်းမဝင်ပါနှင့်။",
+          "ကိုယ်တိုင် ရှာဖွေမိသော **တရားဝင် Hotline** သို့ ခေါ်ပြန်ပါ (အကောင့်ကတ်/ဝဘ်ဆိုဒ်).",
+          "အချက်အလက်ပေးထားပါက **စကားဝှက်ပြောင်း**၊ **2FA ဖွင့်** ပါ။"
+        ]
+      },
+      "escalation": {
+        "en": "Report the number and call details to the bank’s **fraud desk**.",
+        "my": "နံပါတ်နှင့် ခေါ်ဆိုမှုအသေးစိတ်ကို **Fraud Desk** သို့ တိုင်ကြားပါ။"
+      }
+    },
+
+    {
+      "intent": "qr_phishing",
+      "patterns": [
+        "qr scam",
+        "scan to verify",
+        "qrcode login",
+        "qr payment verify",
+        "QR ကုဒ် စစ်ဆေး",
+        "QR ဖြင့် ဝင်ရောက်",
+        "qr code phishing"
+      ],
+      "synonyms": ["verify account by qr", "qr code from email", "poster qr"],
+      "answers": {
+        "en": "Treat QR codes like links—they can hide malicious URLs. Don’t scan from untrusted messages. For payments, verify the receiver’s name and start with a small test amount.",
+        "my": "QR ကုဒ်ကို လင့်ခ်တစ်ခုလို ထင်ပါ — မကောင်းမှု URL များ ဖုံးကွယ်နိုင်သည်။ မယုံကြည်သော စာတို/မက်ဆေ့ခ်ျများမှ QR မစကင်ပါနှင့်။ ငွေပေးချေရာတွင် လက်ခံသူအမည် အတည်ပြုပြီး စမ်းသပ်ငွေနည်းနည်းဖြင့် စတင်ပါ။"
+      },
+      "flow": {
+        "en": [
+          "In your wallet app, **verify merchant/payee name** and the **exact amount** before approving.",
+          "Avoid scanning QR from **SMS/DMs/posters**; search and pick the merchant in the **official app**.",
+          "If you paid already, capture **screenshot + transaction ID** and open a **dispute**."
+        ],
+        "my": [
+          "Wallet App ထဲတွင် **ကုန်သည်/လက်ခံသူအမည်** နှင့် **ငွေပမာဏ** ကို အတည်ပြုပြီးမှ အတည်ပြုပါ။",
+          "SMS/DM/Poster မှ **QR မစကင်** ဘဲ **တရားဝင် App** ထဲတွင် ကုန်သည်ကို ရှာ၍ ရွေးပါ။",
+          "ပြီးသား ပေးချေပြီးပါက **screenshot/transaction ID** သိမ်းဆည်းပြီး **dispute** တင်ပါ။"
+        ]
+      },
+      "escalation": {
+        "en": "If wallet keeps debiting, request a **temporary freeze** and file a **dispute ticket**.",
+        "my": "Wallet မှ လျော့နေဆဲဖြစ်ပါက **ယာယီ ပိတ်ထားခြင်း (freeze)** တောင်းဆိုပြီး **dispute ticket** တင်ပါ။"
+      }
+    },
+
+    {
+      "intent": "sim_swapping",
+      "patterns": [
+        "sim swap",
+        "sim swapping",
+        "number port out",
+        "phone number takeover",
+        "no service then sms",
+        "new sim same number",
+        "sim hijack",
+        "SIM ပြောင်းသုံး",
+        "ဖုန်းနံပါတ် ခိုးယူ",
+        "No Service"
+      ],
+      "synonyms": [
+        "lost signal then deductions",
+        "sudden no signal",
+        "otp not coming"
+      ],
+      "answers": {
+        "en": "Attackers move your number to their SIM to capture OTP/SMS. Add a carrier PIN/port-out lock, prefer app-based 2FA, and call your carrier + bank if you suddenly lose service.",
+        "my": "ကျိုးနှိမ်သူများသည် သင့်ဖုန်းနံပါတ်ကို သူတို့ SIM ထဲသို့ ပြောင်း၍ OTP/SMS ကို လက်လှမ်းမီစေပါသည်။ Operator PIN/Port-out Lock ထားပါ၊ 2FA အတွက် App သုံးပါ၊ ရုတ်တရက် ‘No Service’ ဖြစ်လျှင် Operator နှင့် ဘဏ်ကို ချက်ချင်း ခေါ်ပါ။"
+      },
+      "flow": {
+        "en": [
+          "Call your **mobile operator** immediately to **lock** the number and issue a **replacement SIM**.",
+          "Change **bank/app passwords** and **revoke device sessions**.",
+          "Enable/verify **2FA** using an authenticator app (not SMS)."
+        ],
+        "my": [
+          "**ဖုန်းဆက်သွယ်ရေးကုမ္ပဏီ** သို့ ခေါ်ပြီး **နံပါတ်ပိတ်**၊ **SIM အစားထိုး** တောင်းဆိုပါ။",
+          "**ဘဏ်/App စကားဝှက်** ပြောင်းခြင်းနှင့် **Device Session Revoke** ပြုလုပ်ပါ။",
+          "SMS မဟုတ်သော **Authenticator App 2FA** ကို အသုံးပြုပါ။"
+        ]
+      },
+      "escalation": {
+        "en": "If transactions occurred, contact your **bank’s fraud desk** and file a **police report** if required.",
+        "my": "ငွေလွှဲ/လျော့ ဖြစ်နေပါက **ဘဏ် Fraud Desk** သို့ ဆက်သွယ်ပြီး **တိုင်ကြားစာ** တင်သင့်ပါသည်။"
+      }
+    },
+
+    {
+      "intent": "lost_or_stolen_phone_kbzpay",
+      "patterns": [
+        "lost phone with banking app",
+        "lost phone kbzpay",
+        "phone stolen wallet",
+        "kbzpay lock",
+        "ဘဏ်အက်ပ်ပါဖုန်းပျောက်",
+        "ဖုန်း ပျောက် kbzpay"
+      ],
+      "answers": {
+        "en": "Act quickly to protect your wallet.",
+        "my": "Wallet လုံခြုံရေးအတွက် ချက်ချင်း အရေးပေါ် လုပ်ဆောင်ပါ။"
+      },
+      "flow": {
+        "en": [
+          "Use another device to **change your KBZPay password** and **PIN**.",
+          "Go to **Security → Device Management** and **remove unknown/old devices**.",
+          "Call **KBZPay support** to request a **temporary wallet freeze** if needed."
+        ],
+        "my": [
+          "အခြားစက်မှ **KBZPay စကားဝှက်** နှင့် **PIN** ကို ပြောင်းပါ။",
+          "**Security → Device Management** ထဲတွင် မသိ/ဟောင်းစက်များကို **ဖယ်ရှား** ပါ။",
+          "လိုအပ်ပါက **KBZPay support** သို့ ဆက်သွယ်၍ **ယာယီ wallet freeze** တောင်းဆိုပါ။"
+        ]
+      },
+      "escalation": {
+        "en": "File a **police report** if theft is suspected and provide it to the bank.",
+        "my": "ခိုးယူမှုဆိုရင် **တိုင်ကြားစာ** တင်ပြီး ဘဏ်သို့ တင်ပြပါ။"
+      }
+    },
+
+    {
+      "intent": "employee_phishing",
+      "patterns": [
+        "phish",
+        "suspicious email",
+        "fake email",
+        "malicious link",
+        "fraudulent message",
+        "email scam",
+        "phishing attempt",
+        "email fraud",
+        "verify email",
+        "is this email real",
+        "email safety",
+        "fishing email",
+        "အီးမေးလ် လိမ်လည်မှု",
+        "အွန်လိုင်း လှည့်စားမှု",
+        "အီးမေးလ် အန္တရာယ်",
+        "လင့်ခ် အန္တရာယ်",
+        "အီးမေးလ် စစ်ဆေးရန်"
+      ],
+      "synonyms": [
+        "spoofing",
+        "brand impersonation",
+        "dodgy",
+        "questionable",
+        "phishing"
+      ],
+      "answers": {
+        "en": "Likely phishing. Don’t click links or open attachments. Report via the bank’s official security channel (internal portal/helpdesk) and delete it.",
+        "my": "လိမ်လည်မှုဖြစ်နိုင်ပါသည်။ လင့်ခ်နှိပ်ခြင်း/ပူးတွဲဖိုင်ဖွင့်ခြင်း မလုပ်ပါနှင့်။ ဘဏ်၏ တရားဝင် လုံခြုံရေး ချန်နယ် (အတွင်းပိုင်း portal/စခန်း) မှ တိုင်ကြားပြီး ဖျက်ပါ။"
+      },
+      "flow": {
+        "en": [
+          "Click **Report Phish** in mail or forward to **security mailbox** per policy.",
+          "Do **not** reply to the sender; delete after reporting.",
+          "If you clicked, **change password**, **revoke sessions**, and inform **IT Security**."
+        ],
+        "my": [
+          "Policy အတိုင်း မေးလ်ထဲမှ **Report Phish** ကိုနှိပ်ပြီး **Security Mailbox** သို့ လွှဲပါ။",
+          "ပေးပို့သူကို **မပြန်ကြားပါ**; တိုင်ကြားပြီးနောက် ဖျက်ပါ။",
+          "နှိပ်ပြီးသားဆိုပါက **စကားဝှက်ပြောင်း**, **session revoke** ပြုလုပ်ပြီး **IT Security** ကို အသိပေးပါ။"
+        ]
+      },
+      "escalation": {
+        "en": "If you entered credentials, open a **Confidential Incident** and contact **Security Desk**.",
+        "my": "စကားဝှက် ထည့်ထားပါက **Confidential Incident** ဖွင့်ပြီး **Security Desk** ကို ဆက်သွယ်ပါ။"
+      }
+    },
+
+    {
+      "intent": "usb_media_from_customers",
+      "audience": ["internal"],
+      "patterns": [
+        "open usb",
+        "usb from customer",
+        "pendrive",
+        "flash drive",
+        "external drive safety",
+        "thumb drive",
+        "ယူအက်စ်ဘီ",
+        "usb ဝော်ပြု"
+      ],
+      "answers": {
+        "en": "Do not plug unknown USBs into corporate devices. Use a scanning PC or ask for a safe transfer channel.",
+        "my": "မသိသူ၏ USB ကို အလုပ်သုံးကွန်ပျူတာထဲ မထည့်ပါနှင့်။ စစ်ဆေးရေးကွန်ပျူတာ သို့မဟုတ် လုံခြုံသော ပို့စာလမ်းစဉ်ကို တောင်းဆိုပါ။"
+      },
+      "flow": {
+        "en": [
+          "Use a **dedicated scanning workstation** or **USB data blocker**; never your daily laptop.",
+          "Ask customer to resend via **secure portal/email**; if USB is unavoidable, place it in the **quarantine box**.",
+          "On scanning PC: **disable autorun**, mount **read-only**, run **EDR/AV scan**, and **hash** files.",
+          "If clean, transfer via secure channel; if malicious, **isolate**, open an **Incident**, and **return** media."
+        ],
+        "my": [
+          "**စစ်ဆေးရေးကွန်ပျူတာ** သို့မဟုတ် **USB data blocker** သုံးပါ၊ ကိုယ်ပိုင် laptop မသုံးပါနှင့်။",
+          "ဖိုင်များကို **လုံခြုံ Portal/Email** ဖြင့် ပြန်ပို့ရန် တောင်းဆိုပါ။ မဖြစ်မနေ USB လက်ခံရပါက **quarantine box** ထဲ ထားပါ။",
+          "စစ်ဆေးကွန်ပျူတာတွင် **Autorun ပိတ်**, **read-only** ဖြင့် mount လုပ်၍ **EDR/Antivirus** နဲ့ စစ်၊ **hash** ယူပါ။",
+          "သန့်ရှင်းဆိုလျှင် လုံခြုံလမ်းကြောင်းဖြင့်သာ ပြောင်းပါ; Malware တွေ့လျှင် **ခွဲထား**, **Incident ဖွင့်**, **USB ပြန်အပ်** ပါ။"
+        ]
+      },
+      "escalation": {
+        "en": "If malware or sensitive data is suspected, call **Security Hotline** and open a **Confidential Incident** immediately.",
+        "my": "Malware သို့မဟုတ် အရေးကြီးဒေတာ ပါဝင်နိုင်ပါက **Security Hotline** သို့ ဆက်သွယ်ပြီး **Confidential Incident** ကို ချက်ချင်း ဖွင့်ပါ။"
+      }
+    },
+
+    {
+      "intent": "insider_leak_suspected",
+      "audience": ["internal"],
+      "patterns": [
+        "employee leaking",
+        "staff leak",
+        "insider",
+        "selling customer data",
+        "ဝန်ထမ်း ဒေတာ ခိုးပို့",
+        "လုပ်သား ထုတ်ဖော်"
+      ],
+      "answers": {
+        "en": "Handle potential insider leaks with containment and proper evidence handling.",
+        "my": "အတွင်းလူဒေတာ ယို泄 ဖြစ်နိုင်မှုကို ကန့်တယ်ခြင်းနှင့် သက်သေထိန်းသိမ်းမှုဖြင့် ကိုင်တွယ်ပါ။"
+      },
+      "flow": {
+        "en": [
+          "Do **not** confront the employee. Keep operations normal to avoid tipping off.",
+          "Preserve evidence: export **audit logs** and **access trails** with original timestamps.",
+          "Report to **HR + Security** and open a **Confidential Incident**.",
+          "If customer data exposure is confirmed, prepare a **notification plan** with Legal/Compliance."
+        ],
+        "my": [
+          "ဝန်ထမ်းအား **မတိုက်ရိုက် တိုက်ခိုက်ပါနှင့်**; သံသယ မဖြစ်စေရန် ပုံမှန်လုပ်ဆောင်ပါ။",
+          "**Audit logs**, **access trails** ကို အချိန်မှန်ဖြင့် သိမ်းဆည်းပါ။",
+          "**HR + Security** သို့ တင်ပြပြီး **Confidential Incident** ဖွင့်ပါ။",
+          "Customer Data ပေါက်ကြားမှု အတည်ပြုပြီးလျှင် **Legal/Compliance** နှင့်အတူ **အသိပေးအစီအစဉ်** ပြင်ဆင်ပါ။"
+        ]
+      },
+      "escalation": {
+        "en": "If exfiltration is active, engage **Security** for access suspension and endpoint isolation.",
+        "my": "ဒေတာ ထုတ်ပို့နေခြင်းရှိပါက **Security** နှင့်ပူးပေါင်း၍ အကောင့် **ပိတ်ခြင်း**၊ endpoint **ခွဲထားခြင်း** ပြုလုပ်ပါ။"
+      }
+    },
+
+    {
+      "intent": "atm_skimming_suspected",
+      "patterns": [
+        "atm skimming",
+        "card copied",
+        "cash machine weird",
+        "ATM လိမ်လည်"
+      ],
+      "answers": {
+        "en": "If an ATM looks tampered, do not use it.",
+        "my": "ATM တွင် ပြုပြင်ထားသကဲ့သို့ တွေ့ပါက မသုံးပါနှင့်။"
+      },
+      "flow": {
+        "en": [
+          "Inspect **card slot**, **keypad**, and **camera area**; if loose/misaligned, walk away.",
+          "Use **tap/contactless** if available; shield keypad while entering PIN.",
+          "If you suspect skimming, **freeze card** in app and contact **bank hotline**."
+        ],
+        "my": [
+          "**Card slot**, **keypad**, **camera** ကို စစ်ဆေးပါ; မကိုက်ညီပါက မသုံးပါနှင့်။",
+          "ရရှိနိုင်ပါက **tap/contactless** သုံးပါ; PIN ရိုက်ရာတွင် **ကာကွယ်** ပါ။",
+          "Skimming သံသယရှိပါက App မှ **ကတ်ပိတ်**ပြီး **Hotline** သို့ ဆက်သွယ်ပါ။"
+        ]
+      },
+      "escalation": {
+        "en": "Report the ATM location to the bank and **police** if fraud is confirmed.",
+        "my": "Fraud အတည်ပြုပါက ATM တည်နေရာကို ဘဏ်နှင့် **ရဲဌာန** သို့ အကြောင်းကြားပါ။"
+      }
+    },
+
+    {
+      "intent": "account_takeover_signs",
+      "patterns": [
+        "unauthorized login",
+        "suspicious login",
+        "account takeover",
+        "အကောင့် သိမ်းယူ"
+      ],
+      "answers": {
+        "en": "Here are practical signs your account may be compromised.",
+        "my": "အကောင့် ထိခိုက်နေနိုင်သည့် လက္ခဏာများ သင့်အတွက် အောက်ပါအတိုင်း ဖြစ်သည်။"
+      },
+      "flow": {
+        "en": [
+          "Unexpected **password reset emails** or **2FA prompts** you didn’t initiate.",
+          "New **devices** or **sessions** in your security page you don’t recognize.",
+          "Transactions or setting changes you didn’t make → **change password**, **revoke sessions**, enable **2FA**."
+        ],
+        "my": [
+          "ကိုယ်မပြုလုပ်ထားသော **password reset email**၊ **2FA prompt** များ။",
+          "Security စာမျက်နှာတွင် မသိသော **device/session** အသစ်များ။",
+          "မိမိမလုပ်သော **transaction/setting** ပြောင်းလဲမှုများ → **စကားဝှက်ပြောင်း**, **session revoke**, **2FA** ဖွင့်ပါ။"
+        ]
+      },
+      "escalation": {
+        "en": "If activity continues, request **temporary account freeze** and submit a **dispute**.",
+        "my": "ဆက်လက် ဖြစ်လျှင် **အကောင့် ယာယီပိတ်** တောင်းဆိုပြီး **dispute** တင်ပါ။"
+      }
     },
 
     {
@@ -244,8 +527,6 @@
         "verification code",
         "auth code",
         "one-time code",
-        "စကားဝှက်ကုဒ်",
-        "အတည်ပြုရေး ကုဒ်",
         "OTP ကုဒ်"
       ],
       "answers": {
@@ -255,8 +536,7 @@
       "safety_notes": [
         "High risk if anyone asks for OTP.",
         "End the conversation and contact your bank."
-      ],
-      "examples": ["Please tell me your OTP.", "OTP ပေးရင် အကောင့် မပိတ်ဘူးလား"]
+      ]
     },
 
     {
@@ -266,50 +546,31 @@
         "create secure password",
         "password rules",
         "banking password",
-        "online banking credentials",
-        "password generator",
         "password complexity",
         "password tips",
         "secure login",
         "account protection",
-        "password best practice",
         "စကားဝှက် ဖန်တီးရန်",
         "လုံခြုံသော စကားဝှက်",
-        "ဘဏ်စကားဝှက်",
-        "စကားဝှက် စည်းမျဉ်း",
-        "စကားဝှက် အကြံပြုချက်"
-      ],
-      "synonyms": [
-        "secure passphrase",
-        "complex credentials",
-        "generator",
-        "tool"
+        "စကားဝှက် စည်းမျဉ်း"
       ],
       "answers": {
         "en": [
           "Use 12+ characters mixing upper/lowercase, numbers, and symbols.",
           "Prefer a passphrase of 3–5 random words.",
           "Never reuse passwords—use a password manager.",
-          "Avoid personal info and common words.",
-          "Enable two-factor authentication (2FA).",
-          "Change weak or reused passwords first."
+          "Enable two-factor authentication (2FA)."
         ],
         "my": [
-          "စာလုံးအကြီး/အငယ်၊ ကိန်းဂဏန်း၊ သင်္ကေတများပေါင်းစပ်ပြီး ၁၂ လုံးအထက် သုံးပါ။",
+          "စာလုံးအကြီး/အငယ်၊ ကိန်းဂဏန်း၊ သင်္ကေတ ပေါင်းစပ်ပြီး အနည်းဆုံး ၁၂ လုံး သုံးပါ။",
           "စကားစု ၃–၅ စာဖြင့် passphrase အသုံးပြုပါ။",
-          "စကားဝှက်များ ပြန်သုံးမထားပါ—password manager သုံးပါ။",
-          "ကိုယ်ရေးလက်ရာ၊ လူကြိုက်များ စကားလုံးများ မသုံးပါနှင့်။",
-          "ဖြစ်နိုင်သမျှ 2FA ဖွင့်ထားပါ။",
-          "အားနည်း/ပြန်သုံးထားသော စကားဝှက်များကို ဦးစွာ ပြောင်းပါ။"
+          "စကားဝှက်များ ပြန်မသုံးပါ — password manager သုံးပါ။",
+          "2FA ကို ဖွင့်ထားပါ။"
         ]
       },
       "safety_notes": [
         "Use unique passwords per site.",
         "Enable 2FA where possible."
-      ],
-      "examples": [
-        "What makes a good online banking password?",
-        "How often should I change my password?"
       ]
     },
 
@@ -323,28 +584,19 @@
         "breach alert",
         "password exposed",
         "change password",
-        "security breach",
         "unauthorized access",
-        "login attempt",
         "someone knows my password",
         "စကားဝှက် ခိုးခံရ",
         "အကောင့် အန္တရာယ်",
-        "အချက်အလက် ယိုစိမ့်",
-        "စကားဝှက် ပြောင်းရန်",
-        "ခိုးဝင်မှု"
+        "အချက်အလက် ယိုစိမ့်"
       ],
-      "synonyms": ["leak", "hack", "security incident", "stolen", "exposed"],
       "answers": {
         "en": "Change the password immediately (from a clean device), enable 2FA, review recent logins, and update any other accounts using the same password.",
-        "my": "စကားဝှက်ကို (သန့်ရှင်းသောစက်မှ) ချက်ချင်းပြောင်းပါ၊ 2FA ဖွင့်ပါ၊ လတ်တလော ဝင်ရောက်မှုများကို စစ်ဆေးပါ၊ ထိုစကားဝှက်တူ အသုံးပြုထားသည့် အကောင့်များလည်း ပြောင်းပါ။"
+        "my": "စကားဝှက်ကို (သန့်ရှင်းသောစက်မှ) ချက်ချင်း ပြောင်းပါ၊ 2FA ဖွင့်ပါ၊ လတ်တလော ဝင်ရောက်မှုများကို စစ်ဆေးပါ၊ တူညီသော စကားဝှက် အသုံးပြုထားသည့် အကောင့်များကိုလည်း ပြောင်းပါ။"
       },
       "safety_notes": [
         "Rotate credentials after incidents.",
         "Watch for new login alerts."
-      ],
-      "examples": [
-        "My password was in a data breach — what now?",
-        "Got an alert that my credentials were leaked."
       ]
     },
 
@@ -357,10 +609,8 @@
         "infected my computer",
         "အန္တရာယ် လင့်ခ် နှိပ်",
         "စကားဝှက် ရိုက်ထည့်",
-        "ဗိုင်းရပ်စ် ဒေါင်းလုဒ်",
-        "ကွန်ပျူတာ အန္တရာယ်"
+        "ဗိုင်းရပ်စ် ဒေါင်းလုဒ်"
       ],
-      "synonyms": ["compromised", "hacked", "breached"],
       "answers": {
         "en": "URGENT: Disconnect from the network, avoid entering more credentials, contact IT/security, and change passwords from a clean device.",
         "my": "အရေးကြီး — ကွန်ရက်မှ ချက်ချင်း ဖြုတ်ပါ၊ စကားဝှက်များ ထပ်မထည့်ပါနှင့်၊ IT/လုံခြုံရေးထံ ဆက်သွယ်ပါ၊ သန့်စင်သောစက်မှ စကားဝှက်များ ပြောင်းပါ။"
@@ -368,10 +618,6 @@
       "safety_notes": [
         "Time is critical—act now.",
         "Use a clean device to reset passwords."
-      ],
-      "examples": [
-        "I entered my details on a suspicious site.",
-        "I downloaded a file from a strange email."
       ]
     },
 
@@ -384,21 +630,15 @@
         "systems compromised",
         "ဟက်ကာ ဝင်ရောက်",
         "အချက်အလက် ယိုစိမ့်",
-        "ဗိုင်းရပ်စ် တိုက်ခိုက်",
-        "စနစ်များ အန္တရာယ်"
+        "ဗိုင်းရပ်စ် တိုက်ခိုက်"
       ],
-      "synonyms": ["crypto malware", "file locker", "encryption virus"],
       "answers": {
         "en": "CRITICAL: Isolate affected systems, preserve logs/evidence, follow incident response protocol, and notify your cybersecurity team immediately.",
-        "my": "အရေးပေါ် — ထိခိုက်သည့်စနစ်များကို ခွဲထုတ်ပါ၊ မှတ်တမ်း/သက်သေများ သိမ်းဆည်းပါ၊ Incident Response လုပ်ထုံးလုပ်နည်းကို လိုက်နာပါ၊ ဆိုက်ဘာလုံခြုံရေးအဖွဲ့ကို ချက်ချင်း အကြောင်းကြားပါ။"
+        "my": "အရေးပေါ် — ထိခိုက်သည့်စနစ်များကို ခွဲထုတ်ပါ၊ မှတ်တမ်း/သက်သေများ သိမ်းဆည်းပါ၊ Incident Response လုပ်ထုံးအတိုင်း လိုက်နာပါ၊ ဆိုက်ဘာလုံခြုံရေးအဖွဲ့ကို ချက်ချင်း အကြောင်းကြားပါ။"
       },
       "safety_notes": [
         "Containment before remediation.",
         "Preserve forensic evidence."
-      ],
-      "examples": [
-        "Ransomware message on multiple PCs.",
-        "We see data exfiltration alerts."
       ]
     },
 
@@ -413,12 +653,6 @@
         "နောက်ဆုံးမိနစ် ငွေလွှဲ",
         "ငွေလွှဲ လိမ်လည်မှု"
       ],
-      "synonyms": [
-        "BEC scam",
-        "payment diversion",
-        "bank transfer scam",
-        "invoice fraud"
-      ],
       "answers": {
         "en": "Verify any change to payment or bank details via a known phone number before processing. Last-minute changes are a common fraud tactic.",
         "my": "ငွေပေးချေ/ဘဏ်အချက်အလက် ပြောင်းလဲမှုတိုင်းကို လုပ်မတိုင်မီ ယခင်သိပြီးသား ဖုန်းနံပါတ်ဖြင့် အတည်ပြုပါ။ နောက်ဆုံးမိနစ် ပြောင်းလဲချက်များသည် လိမ်လည်မှုနည်းလမ်းများ ဖြစ်လေ့ရှိသည်။"
@@ -426,10 +660,6 @@
       "safety_notes": [
         "Out-of-band verification.",
         "Watch for look-alike domains."
-      ],
-      "examples": [
-        "Vendor emailed new bank details — safe?",
-        "CEO requests urgent wire transfer."
       ]
     },
 
@@ -441,16 +671,13 @@
         "check clearing",
         "funds availability",
         "မိုဘိုင်း ချက်လက်မှတ် လိမ်လည်မှု",
-        "အတု ချက်လက်မှတ်",
-        "ငွေရရှိမှု အချိန်"
+        "အတု ချက်လက်မှတ်"
       ],
-      "synonyms": ["counterfeit", "bogus check", "fraudulent cheque"],
       "answers": {
         "en": "Funds can appear ‘available’ before final clearing. Avoid checks from unknown sources. If a check later bounces, the credited money can be reversed.",
         "my": "Final Clearing မပြီးခင် ငွေ ‘ရရှိ’ သကဲ့သို့ မြင်နိုင်သည်။ မသိသောအရင်းအမြစ်မှ ချက်လက်မှတ်များကို ရှောင်ပါ။ နောက်ပိုင်း ချက်ပြန်စီးပါက ငွေ ပြန်ဖြုတ်နိုင်သည်။"
       },
-      "safety_notes": ["Funds availability ≠ final clearance."],
-      "examples": ["I deposited a check and sender wants me to wire part back"]
+      "safety_notes": ["Funds availability ≠ final clearance."]
     },
 
     {
@@ -466,23 +693,15 @@
         "fingerprint error",
         "ဝင်လို့မရ",
         "အကောင့်ပိတ်",
-        "အကြိမ်အရေများလွန်း",
-        "အသုံးပြုသူအမည်မေ့",
-        "မျက်နှာဖြင့်ဝင်ရောက်မရ",
-        "လက်ဗွေအမှား"
+        "အကြိမ်အရေများလွန်း"
       ],
-      "synonyms": ["login error", "credentials invalid", "unlock account"],
       "answers": {
         "en": "Use the official password reset flow and ensure your app/browser is up to date. Some banks auto-unlock after a cooldown; otherwise contact support.",
-        "my": "တရားဝင် Password Reset လမ်းကြောင်းကို သုံးပါ၊ App/Browser ကို Update လုပ်ပါ။ ဘဏ်အချို့တွင် အချိန်အနည်းငယ်စာ အလိုအလျောက် ပြန်ဖွင့်နိုင်ပါသည်။ မဖြစ်သေးပါက Support သို့ ဆက်သွယ်ပါ။"
+        "my": "တရားဝင် Password Reset လမ်းကြောင်းကို သုံးပါ၊ App/Browser ကို Update လုပ်ပါ။ ဘဏ်အချို့တွင် အချိန်အနည်းငယ်ကြာပြီး အလိုအလျောက် ပြန်ဖွင့်နိုင်ပါသည်။ မဖြစ်သေးပါက Support သို့ ဆက်သွယ်ပါ။"
       },
       "safety_notes": [
         "Never share reset links or full passwords.",
         "Use the official portal only."
-      ],
-      "examples": [
-        "Too many attempts locked my account.",
-        "Biometric login keeps failing."
       ]
     },
 
@@ -497,23 +716,15 @@
         "fake job offer",
         "ဘဏ်အမည်ခံ",
         "အတုအယောင် ဝန်ဆောင်မှု",
-        "အရေးကြီးအတည်ပြု",
-        "ဘဏ်ဆုကြေး",
-        "အမွေလိမ်",
-        "အလုပ်ကမ်းလှမ်း"
+        "အရေးကြီးအတည်ပြု"
       ],
-      "synonyms": ["impersonation", "pretexting", "pressure tactics"],
       "answers": {
         "en": "Legitimate organizations don’t pressure you for immediate action or sensitive info. Verify unexpected requests via official channels you find yourself.",
-        "my": "တရားဝင်အဖွဲ့အစည်းများသည် အရေးတကြီးလုပ်ရန် သို့မဟုတ် အချက်အလက်အရေးကြီးများ အလိုအလျောက် မတောင်းပါ။ မမျှော်လင့်ထားသော တောင်းဆိုမှုများကို ကိုယ့်ဘက်က ရှာဖွေသည့် တရားဝင်လမ်းကြောင်းများမှ အတည်ပြုပါ။"
+        "my": "တရားဝင်အဖွဲ့အစည်းများသည် အရေးတကြီးလုပ်ရန် သို့မဟုတ် အချက်အလက်အရေးကြီးများ မတောင်းပါ။ မမျှော်လင့်ထားသော တောင်းဆိုမှုများကို ကိုယ်တိုင် ရှာဖွေသည့် တရားဝင်လမ်းကြောင်းများမှ အတည်ပြုပါ။"
       },
       "safety_notes": [
         "Slow down and verify.",
         "Do not share codes or passwords."
-      ],
-      "examples": [
-        "Caller says I won a prize if I verify now.",
-        "Job offer asking for banking details."
       ]
     },
 
@@ -528,22 +739,15 @@
         "keylogger worry",
         "ဘဏ်အက်ပ်ပါဖုန်းပျောက်",
         "လက်ပ်တော့ခိုး",
-        "အများသုံးကွန်ပျူတာ",
-        "ဘေးလူမြင်အောင်",
-        "ခလုတ်မှတ်စက်"
+        "အများသုံးကွန်ပျူတာ"
       ],
-      "synonyms": ["remote wipe", "device lock", "find my device"],
       "answers": {
         "en": "If a device with banking apps is lost/stolen, trigger remote wipe if possible, change your bank password from a clean device, and ask the bank to disable mobile access.",
-        "my": "ဘဏ်အက်ပ်ပါ ကိရိယာ ပျောက်/ခိုးခံရပါက Remote Wipe လုပ်ပါ (ဖြစ်နိုင်လျှင်)၊ သန့်စင်သောစက်မှ ဘဏ်စကားဝှက် ပြောင်းပါ၊ မိုဘိုင်းဝင်ရောက်မှု ပိတ်ရန် ဘဏ်ထံ တိုင်ကြားပါ။"
+        "my": "ဘဏ်အက်ပ်ပါ ကိရိယာ ပျောက်/ခိုးခံရပါက Remote Wipe (ဖြစ်နိုင်လျှင်) ပြုလုပ်ပါ၊ သန့်စင်သောစက်မှ ဘဏ်စကားဝှက် ပြောင်းပါ၊ မိုဘိုင်းဝင်ရောက်မှု ပိတ်ရန် ဘဏ်ထံ တိုင်ကြားပါ။"
       },
       "safety_notes": [
         "Enable device PIN/biometrics.",
         "Turn on device-find and remote wipe."
-      ],
-      "examples": [
-        "My phone with the banking app was stolen.",
-        "Is it safe to use a public computer?"
       ]
     },
 
@@ -558,22 +762,13 @@
         "confirm payment safety",
         "နှစ်ကြိမ်တိုက်",
         "ခွင့်ပြုချက်မရှိ",
-        "ငွေလွှဲပျောက်",
-        "မဟုတ်သောငွေထုတ်",
-        "ငွေလွှဲလုံခြုံမှု"
+        "ငွေလွှဲပျောက်"
       ],
-      "synonyms": ["charge dispute", "chargeback", "unrecognized transaction"],
       "answers": {
         "en": "Turn on transaction alerts, review statements regularly, and report unauthorized activity to your bank as soon as possible for investigation.",
         "my": "လုပ်ဆောင်မှုအသိပေးချက်များ ဖွင့်ပါ၊ Statement များကို ပုံမှန်စစ်ဆေးပါ၊ ခွင့်ပြုချက်မရှိသော လုပ်ဆောင်ချက်တွေ့လျှင် ဘဏ်ထံ ချက်ချင်း တိုင်ကြားပါ။"
       },
-      "safety_notes": [
-        "Act quickly; keep dates and references when reporting."
-      ],
-      "examples": [
-        "I see a withdrawal I don’t recognize.",
-        "Was I charged twice?"
-      ]
+      "safety_notes": ["Act quickly; keep dates and references when reporting."]
     },
 
     {
@@ -586,17 +781,13 @@
         "block international transactions",
         "2FA ဖွင့်",
         "သတိပေးချက်ဖွင့်",
-        "ငွေထုတ်ကန့်သတ်",
-        "ဝင်ရောက်မှုအသိ",
-        "နိုင်ငံခြားငွေလွှဲပိတ်"
+        "ငွေထုတ်ကန့်သတ်"
       ],
-      "synonyms": ["two-factor authentication", "MFA", "biometric login"],
       "answers": {
         "en": "Enable all available security features: 2FA (prefer app over SMS), transaction alerts, and biometric login where supported.",
-        "my": "ရနိုင်သော လုံခြုံရေးအင်္ဂါရပ်များအားလုံးကို ဖွင့်ပါ — 2FA (SMS ထက် App သုံးရန်), လုပ်ဆောင်မှုအသိပေးချက်များ၊ ဇီဝမှတ်သားဝင်ရောက်မှု (ထောက်ပံ့ပါက)။"
+        "my": "ရရှိနိုင်သော လုံခြုံရေးအင်္ဂါရပ်များအားလုံးကို ဖွင့်ပါ — 2FA (SMS ထက် App သုံးရန်), လုပ်ဆောင်မှုအသိပေးချက်များ၊ ဇီဝမှတ်သားဝင်ရောက်မှု (ထောက်ပံ့ပါက)။"
       },
-      "safety_notes": ["Prefer app-based authenticators over SMS."],
-      "examples": ["How do I enable alerts?", "Can I use fingerprint to login?"]
+      "safety_notes": ["Prefer app-based authenticators over SMS."]
     },
 
     {
@@ -611,22 +802,15 @@
         "ဖုန်းနှေးနေ",
         "ပေါ်လာသောကြော်ငြာ",
         "အတုဗိုင်းရပ်စ်",
-        "ဘရောက်ဆာလမ်းလွဲ",
-        "ဘက်ထရီအမြန်ကုန်",
-        "အက်ပ်ခွင့်ပြုချက်များ"
+        "ဘရောက်ဆာလမ်းလွဲ"
       ],
-      "synonyms": ["virus", "spyware", "trojan", "malware"],
       "answers": {
         "en": "Unexpected pop-ups, slow performance, or fast battery drain may indicate malware. Run antivirus scans and avoid entering credentials until the device is verified clean.",
         "my": "မျှော်လင့်မထားသော ကြော်ငြာပေါ်လာခြင်း၊ စွမ်းဆောင်ရည်နှေးကွေးခြင်း၊ ဘက်ထရီမြန်ကုန်ခြင်းတို့သည် Malware ဖြစ်နိုင်သည်။ Antivirus ဖြင့် စစ်ဆေးပြီး ကိရိယာ သန့်ရှင်းကြောင်း အတည်ပြုမချင်း စကားဝှက်များ မရိုက်ပါနှင့်။"
       },
       "safety_notes": [
-        "Keep OS and banking app updated.",
+        "Keep OS/app updated.",
         "Install apps from trusted stores only."
-      ],
-      "examples": [
-        "Why is my phone suddenly slow with pop-ups?",
-        "My browser keeps redirecting to odd sites."
       ]
     },
 
@@ -637,23 +821,15 @@
         "private mode banking",
         "stop sharing data",
         "delete search history",
-        "incognito banking",
         "limit data collection",
         "ငွေကြေးဖုံးကွယ်",
-        "ကိုယ်ရေး အချက်အလက်မျှဝေမှုရပ်",
-        "ရှာဖွေမှုမှတ်တမ်းဖျက်",
-        "အချက်အလက်ကောက်ယူမှုကန့်သတ်"
+        "ကိုယ်ရေး အချက်အလက်မျှဝေမှုရပ်"
       ],
-      "synonyms": ["privacy settings", "data sharing opt-out"],
       "answers": {
-        "en": "Use your app/site privacy settings to limit data sharing and hide balances from view where available. Review third-party permissions regularly.",
-        "my": "App/Website ၏ Privacy Settings တွင် အချက်အလက်မျှဝေမှုကို ကန့်သတ်နိုင်ပြီး လက်ကျန်ကို ဖုံးကွယ်ပြရန် ရွေးချယ်နိုင်သည် (ထောက်ပံ့ပါက)။ တတိယပါတီ ခွင့်ပြုချက်များကို ပုံမှန်စစ်ဆေးပါ။"
+        "en": "Use your app/site privacy settings to limit data sharing and hide balances where available. Review third-party permissions regularly.",
+        "my": "App/Website ၏ Privacy Settings တွင် အချက်အလက်မျှဝေမှုကို ကန့်သတ်ပြီး လက်ကျန်ဖုံးကွယ် ရနိုင်ပါသည် (ထောက်ပံ့ပါက)။ တတိယပါတီ ခွင့်ပြုချက်များကို ပုံမှန် စစ်ဆေးပါ။"
       },
-      "safety_notes": ["Review app permissions regularly."],
-      "examples": [
-        "How do I hide my balance on the app?",
-        "Can I stop data sharing with partners?"
-      ]
+      "safety_notes": ["Review app permissions regularly."]
     },
 
     {
@@ -666,21 +842,13 @@
         "account freeze request",
         "chargeback process",
         "အကောင့်ပြန်လည်ရယူ",
-        "ခိုးယူခံရငွေပြန်",
-        "အထောက်အထားခိုး",
-        "အကောင့်ခြေကာကွယ်",
-        "ငွေပြန်အမ်းလုပ်ငန်းစဉ်"
+        "ခိုးယူခံရငွေပြန်"
       ],
-      "synonyms": ["reimbursement", "refund", "investigation"],
       "answers": {
         "en": "Report to your bank immediately, collect evidence (dates, refs, messages), and follow guidance from the investigations team. Reimbursement depends on your case and policy.",
         "my": "ဘဏ်ထံ ချက်ချင်း တိုင်ကြားပါ၊ သက်သေများ (နေ့ရက်၊ ကိုးကားနံပါတ်၊ စာတို) ကို စုဆောင်းပါ၊ စုံစမ်းရေးအဖွဲ့၏ လမ်းညွှန်ချက်ကို လိုက်နာပါ။ ငွေပြန်အမ်းသည် ကိစ္စနှင့် မူဝါဒပေါ် မူတည်သည်။"
       },
-      "safety_notes": ["Document everything (dates, refs, case IDs)."],
-      "examples": [
-        "Can I get my money back after fraud?",
-        "What happens after I file a report?"
-      ]
+      "safety_notes": ["Document everything (dates, refs, case IDs)."]
     },
 
     {
@@ -691,23 +859,15 @@
         "data retention policy",
         "regulatory requirements",
         "audit procedures",
-        "compliance documentation",
         "GDPR တောင်းဆို",
         "CCPA ငြင်းဆို",
-        "အချက်အလက်သိမ်းဆည်းမှု",
-        "စည်းမျဉ်းလိုအပ်ချက်",
-        "စာရင်းစစ်လုပ်ငန်းစဉ်"
+        "အချက်အလက်သိမ်းဆည်းမှု"
       ],
-      "synonyms": ["privacy request", "regulatory inquiry", "audit"],
       "answers": {
         "en": "Submit privacy/compliance requests through the bank’s official data privacy channel. Timelines vary by applicable laws and policy (often up to ~30 days).",
         "my": "Privacy/Compliance တောင်းဆိုမှုများကို ဘဏ်၏ တရားဝင် Data Privacy ချန်နယ်မှ တင်သွင်းပါ။ တုံ့ပြန်ချိန်များသည် သက်ဆိုင်ရာ ဥပဒေ နှင့် မူဝါဒအပေါ် မူတည်ပြီး (~၃၀ ရက်အထိ) ကွာခြားနိုင်သည်။"
       },
-      "safety_notes": ["Verify identity before fulfilling requests."],
-      "examples": [
-        "How do I submit a GDPR request?",
-        "What’s your data retention policy?"
-      ]
+      "safety_notes": ["Verify identity before fulfilling requests."]
     },
 
     {
@@ -722,130 +882,39 @@
         "အက်ပ်အလုပ်မလုပ်",
         "ဝဘ်ဆိုဒ်မရ",
         "ဝင်ရောက်မှုအမှား",
-        "အတည်ပြုကုဒ်ပြဿနာ",
-        "မျက်နှာဖြင့်ဝင်ရောက်မှုပြဿနာ"
+        "အတည်ပြုကုဒ်ပြဿနာ"
       ],
-      "synonyms": ["troubleshoot", "support", "help desk"],
       "answers": {
         "en": "Clear cache/cookies, update your app/browser, and try again. If issues persist, contact support with your device model, OS version, and the exact error message.",
         "my": "Cache/Cookies ရှင်းပါ၊ App/Browser ကို Update လုပ်ပါ၊ ထပ်စမ်းပါ။ မဖြစ်သေးပါက ကိရိယာ မော်ဒယ်၊ OS ဗားရှင်းနှင့် အမှားစာသားအတိအကျဖြင့် Support သို့ ဆက်သွယ်ပါ။"
       },
-      "safety_notes": ["Never share full passwords with support."],
-      "examples": [
-        "Why can’t I receive the OTP?",
-        "Site loads blank on my phone."
-      ]
-    },
-
-    {
-      "intent": "sim_swapping",
-      "patterns": [
-        "sim swap",
-        "sim swapping",
-        "number port out",
-        "phone number takeover",
-        "SIM ပြောင်းသုံး"
-      ],
-      "synonyms": [
-        "no service then sms",
-        "new sim same number",
-        "sim hijack",
-        "ဖုန်းနံပါတ် ခိုးယူ"
-      ],
-      "answers": {
-        "en": "Attackers move your number to their SIM to capture OTP/SMS. Add a carrier PIN/port-out lock, prefer app-based 2FA, and call your carrier + bank if you suddenly lose service.",
-        "my": "ကျိုးနှိမ်သူများသည် သင့်ဖုန်းနံပါတ်ကို သူတို့ SIM ထဲသို့ ပြောင်း၍ OTP/SMS ကို လက်လှမ်းမီစေပါသည်။ Operator PIN/Port-out Lock ထားပါ၊ 2FA အတွက် App သုံးပါ၊ ရုတ်တရက် ‘No Service’ ဖြစ်လျှင် Operator နှင့် ဘဏ်ကို ချက်ချင်း ခေါ်ပါ။"
-      },
-      "safety_notes": [
-        "Carrier PIN/Port-out lock.",
-        "Use authenticator app for 2FA."
-      ],
-      "examples": [
-        "Why did I get ‘No Service’ and then bank SMS codes?",
-        "SIM swapping explained simply."
-      ]
-    },
-
-    {
-      "intent": "qr_phishing",
-      "patterns": [
-        "qr scam",
-        "scan to verify",
-        "qrcode login",
-        "qr payment verify",
-        "QR ကုဒ် စစ်ဆေး"
-      ],
-      "synonyms": [
-        "verify account by qr",
-        "qr code from email",
-        "poster qr",
-        "QR ဖြင့် ဝင်ရောက်",
-        "qr code phishing"
-      ],
-      "answers": {
-        "en": "Treat QR codes like links—they can hide malicious URLs. Don’t scan from untrusted messages. For payments, verify the receiver’s name and start with a small test amount.",
-        "my": "QR ကုဒ်ကို လင့်ခ်တစ်ခုလို ထင်ပါ — မကောင်းမှု URL များ ဖုံးကွယ်နိုင်သည်။ မယုံကြည်သော စာတို/မက်ဆေ့ခ်ျများမှ QR မစကင်ပါနှင့်။ ငွေပေးချေရာတွင် လက်ခံသူအမည် အတည်ပြုပြီး စမ်းသပ်ငွေနည်းနည်းဖြင့် စတင်ပါ။"
-      },
-      "safety_notes": [
-        "Verify payee name.",
-        "Avoid scanning from untrusted sources."
-      ],
-      "examples": [
-        "Scan this QR to verify my account?",
-        "Is QR code payment safe?"
-      ]
-    },
-
-    {
-      "intent": "vishing_call",
-      "patterns": [
-        "phone call from bank",
-        "verify on call",
-        "voice phishing",
-        "caller asked otp",
-        "ဖုန်းက otp တောင်း"
-      ],
-      "synonyms": [
-        "caller id shows bank",
-        "call center asked code",
-        "ဘဏ်က ခေါ်ဆို",
-        "verify details over phone"
-      ],
-      "answers": {
-        "en": "Banks don’t ask OTP/PIN by phone. Hang up and call the official number from the card or the bank’s website.",
-        "my": "ဘဏ်များသည် ဖုန်းဖြင့် OTP/PIN မတောင်းပါ။ ဖုန်းဖြုတ်ပြီး ကတ်/ဝဘ်ဆိုဒ်တွင်ပါတာ တရားဝင် နံပါတ်သို့ ခေါ်ပြန်ပါ။"
-      },
-      "safety_notes": [
-        "Don’t trust caller ID.",
-        "Call back using the official number."
-      ],
-      "examples": [
-        "Someone called asking for my OTP.",
-        "Fraud team called me — real?"
-      ]
+      "safety_notes": ["Never share full passwords with support."]
     },
 
     {
       "intent": "wallet_balance_decreasing",
-      "patterns": ["kbzpay balance decreasing", "ငွေလျော့နေ", "..."],
-      "answers": { "en": "Short intro...", "my": "…" },
+      "patterns": ["kbzpay balance decreasing", "ငွေလျော့နေ"],
+      "answers": {
+        "en": "Let’s check common causes and lock things down.",
+        "my": "အများအားဖြင့် ဖြစ်တတ်သည့် အကြောင်းရင်းများကို စစ်ဆေးပြီး လုံခြုံရေး ချက်ချင်း တိုးပါစို့။"
+      },
       "flow": {
         "en": [
-          "Check Linked Services: Me → Linked Services. Remove unknown merchants.",
-          "Bills & Subscriptions → Auto-debit: disable anything unfamiliar.",
-          "Security → Device Management: remove old/unknown devices.",
-          "Change login password & PIN (do not reuse)."
+          "Check **Linked Services** (Me → Linked Services) and remove unknown merchants.",
+          "**Bills & Subscriptions → Auto-debit**: disable anything unfamiliar.",
+          "**Security → Device Management**: remove old/unknown devices.",
+          "Change **login password & PIN** (do not reuse)."
         ],
         "my": [
-          "Linked Services စစ်ဆေးပါ — မသိသူများ ဖယ်ရှားပါ။",
-          "Bills & Subscriptions → Auto-debit ပိတ်ပါ။",
-          "Security → Device Management မှ မသိ/ဟောင်းစက်များ ဖယ်ရှားပါ။",
-          "Login Password/PIN ပြောင်းပါ။"
+          "**Linked Services** တွင် မသိသူများကို ဖယ်ရှားပါ။",
+          "**Bills & Subscriptions → Auto-debit** ပိတ်ပါ။",
+          "**Security → Device Management** တွင် မသိ/ဟောင်းစက်များကို ဖယ်ရှားပါ။",
+          "**Login Password/PIN** ကို ပြောင်းပါ (ဟောင်း မပြန်သုံးပါနှင့်)။"
         ]
       },
       "escalation": {
-        "en": "If not resolved, contact KBZPay and request a temporary wallet freeze + dispute.",
-        "my": "မဖြေရှင်းပါက KBZPay သို့ ဆက်သွယ်၍ wallet freeze + dispute တင်ပါ။"
+        "en": "If not resolved, contact **KBZPay** to request a **temporary wallet freeze** and submit a **dispute ticket**.",
+        "my": "မဖြေရှင်းသေးပါက **KBZPay** သို့ ဆက်သွယ်၍ **wallet freeze** တောင်းဆိုပြီး **dispute ticket** တင်ပါ။"
       }
     },
 
@@ -858,19 +927,11 @@
         "လက်ဆောင် app ထည့်",
         "apk ထည့်ပေး"
       ],
-      "synonyms": ["gift points app", "campaign apk", "app to redeem"],
       "answers": {
         "en": "Banks won’t require a separate app to claim rewards. Use only the bank’s verified app from official stores and avoid APK files or links from messages.",
         "my": "လက်ဆောင်/ပွိုင့်ရယူရန် သီးခြား App ထည့်ရန် ဘဏ်မှ မတောင်းပါ။ တရားဝင် Store များမှ Verified App ကိုသာ သုံးပြီး APK ဖိုင်များနှင့် စာတိုလင့်ခ်များကို ရှောင်ပါ။"
       },
-      "safety_notes": [
-        "Do not sideload APKs.",
-        "Use official app stores only."
-      ],
-      "examples": [
-        "Install this app to get reward points?",
-        "Promotion app download safe?"
-      ]
+      "safety_notes": ["Do not sideload APKs.", "Use official app stores only."]
     },
 
     {
@@ -881,13 +942,6 @@
         "account security tips",
         "bank security basics",
         "အကောင့် ဘေးကင်းရေး"
-      ],
-      "synonyms": [
-        "strong password advice",
-        "enable 2fa",
-        "device security",
-        "စကားဝှက် တောင့်တင်း",
-        "2FA ဖွင့်"
       ],
       "answers": {
         "en": [
@@ -905,11 +959,7 @@
           "Statement များကို ပုံမှန် စစ်ဆေးပြီး မသိသော ကုန်ကျစရိတ်များကို ချက်ချင်း တိုင်ကြားပါ။"
         ]
       },
-      "safety_notes": ["Prefer app-based 2FA.", "Use a password manager."],
-      "examples": [
-        "How to secure my bank account?",
-        "အကောင့် ဘယ်လို အားကောင်းစေမလဲ?"
-      ]
+      "safety_notes": ["Prefer app-based 2FA.", "Use a password manager."]
     },
 
     {
@@ -921,21 +971,11 @@
         "save card online",
         "ကတ်အွန်လိုင်း သုံး"
       ],
-      "synonyms": [
-        "e-commerce fraud",
-        "card stored on website",
-        "CVV leak",
-        "CVV အန္တရာယ်"
-      ],
       "answers": {
         "en": "Prefer virtual/one-time cards if available. Don’t store card details on random sites. Turn on transaction alerts.",
-        "my": "ဖြစ်နိုင်လျှင် Virtual/One-time ကတ်သုံးပါ။ မယုံကြည်ရသေးသော ဝဘ်ဆိုဒ်များတွင် ကတ်အချက်အလက် မသိမ်းပါနှင့်။ လုပ်ဆောင်မှု အသိပေးချက်များဖွင့်ပါ။"
+        "my": "ဖြစ်နိုင်လျှင် Virtual/One-time ကတ်သုံးပါ။ မယုံကြည်ရသေးသော ဝဘ်ဆိုဒ်များတွင် ကတ်အချက်အလက် မသိမ်းပါနှင့်။ လုပ်ဆောင်မှု အသိပေးချက်များ ဖွင့်ပါ။"
       },
-      "safety_notes": ["Enable transaction alerts.", "Prefer virtual cards."],
-      "examples": [
-        "Is it safe to save my card online?",
-        "My CVV leaked — what now?"
-      ]
+      "safety_notes": ["Enable transaction alerts.", "Prefer virtual cards."]
     },
 
     {
@@ -948,20 +988,11 @@
         "ID ကတ် ပျောက်",
         "အချက်အလက် ယိုစိမ့်"
       ],
-      "synonyms": [
-        "leaked phone and email",
-        "what to do after leak",
-        "credential exposure"
-      ],
       "answers": {
         "en": "Change passwords, enable 2FA, review recent transactions, and watch for new-login alerts. Ask your bank and mobile operator to add extra verification if sensitive IDs were exposed.",
-        "my": "စကားဝှက်များ ပြောင်းပါ၊ 2FA ဖွင့်ပါ၊ လတ်တလော လုပ်ဆောင်ချက်များ စစ်ဆေးပါ၊ Login Alert များ စောင့်ကြည့်ပါ။ ကိုယ်ရေး ID များ洩露 ဖြစ်ပါက ဘဏ်နှင့် ဖုန်း Operator ထံ အပြောင်းအလဲအတည်ပြုချက် ထပ်ထည့်စေပါ။"
+        "my": "စကားဝှက်များ ပြောင်းပါ၊ 2FA ဖွင့်ပါ၊ လတ်တလော လုပ်ဆောင်ချက်များ စစ်ဆေးပါ၊ Login Alert များ စောင့်ကြည့်ပါ။ ကိုယ်ရေး ID များ洩露 ဖြစ်ပါက ဘဏ်နှင့် ဖုန်း Operator ထံ အတည်ပြုချက် ထပ်ထည့်စေပါ။"
       },
-      "safety_notes": ["Rotate passwords.", "Monitor transactions/alerts."],
-      "examples": [
-        "My data leaked — what should I do?",
-        "Identity theft suspected."
-      ]
+      "safety_notes": ["Rotate passwords.", "Monitor transactions/alerts."]
     },
 
     {
@@ -973,20 +1004,11 @@
         "လိမ်လည်မှု တိုင်ကြား",
         "ဘယ်ကို တိုင်ပင်ရမလဲ"
       ],
-      "synonyms": [
-        "scammer contact me",
-        "I sent money to scam",
-        "fraud hotline"
-      ],
       "answers": {
         "en": "Collect evidence (messages, numbers, links) and report to your bank immediately. If money was sent, request a freeze. Also report to local cybercrime/consumer protection.",
         "my": "သက်သေများ (စာတို၊ နံပါတ်၊ လင့်ခ်) စုဆောင်းပြီး ဘဏ်ထံ ချက်ချင်း တိုင်ကြားပါ။ ငွေ ပေးပို့ပြီးသားဆိုပါက Freeze တောင်းဆိုပါ။ ဒေသန္တရ ဆိုက်ဘာရာဇဝတ်မှု/စားသုံးသူကာကွယ်ရေးထံလည်း တိုင်ကြားပါ။"
       },
-      "safety_notes": ["Act quickly if funds were sent.", "Keep evidence."],
-      "examples": [
-        "I sent money to a scam — what can be done?",
-        "How to report a scammer?"
-      ]
+      "safety_notes": ["Act quickly if funds were sent.", "Keep evidence."]
     },
 
     {
@@ -997,16 +1019,11 @@
         "verify bank contact",
         "တရားဝင် ဖုန်းနံပါတ်"
       ],
-      "synonyms": ["which number is real", "bank hotline", "contact details"],
       "answers": {
         "en": "Find contact numbers inside the official app or website. Do not trust numbers shown in messages, images, or random sites.",
         "my": "တရားဝင် App သို့မဟုတ် ဝဘ်ဆိုဒ်တွင် ဆက်သွယ်ရန် နံပါတ်များကို ကြည့်ရှုပါ။ စာတို/ပုံ/မသိသောဝဘ်ဆိုဒ်များမှ နံပါတ်များကို မယုံကြည်ပါနှင့်။"
       },
-      "safety_notes": ["Use official site/app only."],
-      "examples": [
-        "Is this bank number real?",
-        "How can I contact the bank safely?"
-      ]
+      "safety_notes": ["Use official site/app only."]
     },
 
     {
@@ -1018,20 +1035,11 @@
         "KYC လင့်ခ်",
         "အချက်အလက် အရေးပေါ် အတည်ပြု"
       ],
-      "synonyms": [
-        "kyc verification link",
-        "send id front back email",
-        "submit id by link"
-      ],
       "answers": {
         "en": "Do not upload KYC documents through random links/emails. Use the official app/website or visit a branch to update personal information.",
         "my": "မည်သူမဆို ပေးပို့သည့် လင့်ခ်/အီးမေးလ်များမှ KYC စာရွက်စာတမ်းများ မတင်ပါနှင့်။ ကိုယ်ရေးအချက်အလက် အပ်ဒိတ်အတွက် တရားဝင် App/Website သို့မဟုတ် ဘဏ်ခွဲသို့ သွားရောက် ပြုလုပ်ပါ။"
       },
-      "safety_notes": ["Submit KYC only via official channels."],
-      "examples": [
-        "Link asks me to upload my NRC front/back.",
-        "Email wants my passport scan — safe?"
-      ]
+      "safety_notes": ["Submit KYC only via official channels."]
     }
   ]
 }
