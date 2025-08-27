@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Query
+from fastapi import APIRouter, UploadFile, File, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from typing import Optional
 import time
@@ -7,7 +7,7 @@ import json
 from collections import defaultdict, deque
 
 from pydantic import BaseModel
-from openai import OpenAI  # safe to import; we won't construct a client until needed
+from openai import OpenAI
 
 from app.models import (
     ChatRequest, ChatResponse, Reasoning,
@@ -48,7 +48,6 @@ class TraceReq(BaseModel):
 _OPENAI_MODEL = os.environ.get("AT_MODEL", "gpt-4o-mini")
 
 def _get_openai_client():
-    """Create OpenAI client only when we actually need it."""
     key = os.environ.get("OPENAI_API_KEY")
     if not key:
         return None
@@ -75,11 +74,22 @@ _BANNER_MY = (
 )
 
 # -------------------------------------------------
-# --- Generic scenario-followup support (ALL intents)
+# --- Session helpers -----------------------------
 # -------------------------------------------------
-# In-memory session: topic, step, lang, short history
 _SESS = defaultdict(lambda: {"topic": None, "step": 0, "lang": "en", "hist": deque(maxlen=6)})
 
+def _session_key(req_body: ChatRequest, request: Request) -> str:
+    if getattr(req_body, "session_id", None):
+        return req_body.session_id
+    ip = request.client.host if request and request.client else None
+    xff = request.headers.get("x-forwarded-for", "")
+    if xff:
+        ip = (xff.split(",")[0].strip() or ip)
+    return ip or "anon"
+
+# -------------------------------------------------
+# --- Follow-up markers ---------------------------
+# -------------------------------------------------
 FOLLOWUP_MARKERS = {
     "en": [
         "i already did", "i did that", "i did those", "done", "still not", "cant find", "can't find",
@@ -92,7 +102,9 @@ def is_followup(text: str, lang: str) -> bool:
     t = text.lower()
     return any(k in t for k in FOLLOWUP_MARKERS.get(lang, []))
 
-# Load optional per-intent flows + escalation from knowledge.json
+# -------------------------------------------------
+# --- Flows + escalation from knowledge.json -------
+# -------------------------------------------------
 try:
     with open("data/knowledge.json", "r", encoding="utf-8") as _f:
         _KB = json.load(_f)
@@ -122,7 +134,9 @@ def get_escalation(intent: str, lang: str):
     esc = data.get("esc", {})
     return esc.get(lang) or esc.get("en")
 
-# Ask AI to CONTINUE the same scenario (next 1–2 actions), not restart
+# -------------------------------------------------
+# --- AI continuation helper -----------------------
+# -------------------------------------------------
 async def ai_continue(ai_obj, sess, user_msg: str, lang: str):
     system = (
         "You are a banking/cybersecurity assistant. Continue the SAME troubleshooting scenario. "
@@ -140,16 +154,15 @@ async def ai_continue(ai_obj, sess, user_msg: str, lang: str):
     except Exception:
         return None
 
-# Confidence thresholds (RuleEngine normalizes to ~0..1 range)
-CONF_STRONG = 0.75   # strong rule hit → trust rules
-CONF_WEAK   = 0.55   # weak rule hit → prefer AI (or continuation if follow-up)
+# Confidence thresholds
+CONF_STRONG = 0.75
+CONF_WEAK   = 0.55
 
 # ==================================================
 # ===============   STREAMING CHAT   ===============
 # ==================================================
 @router.post("/chat/stream")
-async def chat_stream(req: ChatRequest):
-    # ---- HARD-LIMIT (scope check)
+async def chat_stream(req: ChatRequest, request: Request):
     in_scope, lang_gate = scope_check(req.message)
     if not in_scope:
         msg = OUT_OF_SCOPE_MY if lang_gate == "my" else OUT_OF_SCOPE_EN
@@ -157,16 +170,13 @@ async def chat_stream(req: ChatRequest):
         return StreamingResponse(iter([msg + banner]), media_type="text/plain")
 
     t0 = time.perf_counter()
-
-    # Decide target language once (hint > detect)
     lang = detect_language(req.message, hint=getattr(req, "lang_hint", None))
 
-    # ---- Generic pre-handle for flows / continuation (stream path)
     m = rules.match(req.message, lang_hint=lang)
     intent = m.get("intent")
     conf = float(m.get("confidence", 0.0))
 
-    sess_key = getattr(req, "session_id", None) or f"{req.client.host or 'anon'}"
+    sess_key = _session_key(req, request)
     sess = _SESS[sess_key]
     sess["lang"] = lang
     sess["hist"].append(("user", req.message))
@@ -174,13 +184,11 @@ async def chat_stream(req: ChatRequest):
     if intent:
         steps = get_flow_steps(intent, lang)
         if steps:
-            # Stepper path
             if is_followup(req.message, lang) and sess.get("topic") == intent:
                 sess["step"] = min(sess.get("step", 0) + 1, len(steps) - 1)
             else:
                 sess["topic"] = intent
                 sess["step"] = 0
-
             idx = sess["step"]
             text = steps[idx]
             if idx == len(steps) - 1:
@@ -191,29 +199,26 @@ async def chat_stream(req: ChatRequest):
             sess["hist"].append(("assistant", text))
             banner = _BANNER_MY if lang == "my" else _BANNER_EN
             return StreamingResponse(iter([text + banner]), media_type="text/plain")
-        else:
-            # No flow → AI continuation for follow-ups (single-chunk stream)
-            if is_followup(req.message, lang) and getattr(req, "allow_ai_fallback", True):
-                cont = await ai_continue(ai, sess, req.message, lang)
-                if cont:
-                    sess["hist"].append(("assistant", cont))
-                    banner = _BANNER_MY if lang == "my" else _BANNER_EN
-                    return StreamingResponse(iter([cont + banner]), media_type="text/plain")
-            # Weak rule hit → prefer continuation instead of raw LLM stream
-            if conf < CONF_WEAK and getattr(req, "allow_ai_fallback", True):
-                cont = await ai_continue(ai, sess, req.message, lang)
-                if cont:
-                    sess["hist"].append(("assistant", cont))
-                    banner = _BANNER_MY if lang == "my" else _BANNER_EN
-                    return StreamingResponse(iter([cont + banner]), media_type="text/plain")
 
-    # ---- Otherwise, call the model normally (guarded by lazy client)
+        if is_followup(req.message, lang) and getattr(req, "allow_ai_fallback", True):
+            cont = await ai_continue(ai, sess, req.message, lang)
+            if cont:
+                sess["hist"].append(("assistant", cont))
+                banner = _BANNER_MY if lang == "my" else _BANNER_EN
+                return StreamingResponse(iter([cont + banner]), media_type="text/plain")
+
+        if conf < CONF_WEAK and getattr(req, "allow_ai_fallback", True):
+            cont = await ai_continue(ai, sess, req.message, lang)
+            if cont:
+                sess["hist"].append(("assistant", cont))
+                banner = _BANNER_MY if lang == "my" else _BANNER_EN
+                return StreamingResponse(iter([cont + banner]), media_type="text/plain")
+
     client = _get_openai_client()
     if not client:
         banner = _BANNER_MY if lang == "my" else _BANNER_EN
         msg = ("Service temporarily unavailable (missing AI key)."
-               if lang == "en" else
-               "ဝန်ဆောင်မှု မရနိုင်သေးပါ (AI key မရှိပါ).")
+               if lang == "en" else "ဝန်ဆောင်မှု မရနိုင်သေးပါ (AI key မရှိပါ).")
         return StreamingResponse(iter([msg + banner]), media_type="text/plain")
 
     messages = [
@@ -236,17 +241,14 @@ async def chat_stream(req: ChatRequest):
                 if delta:
                     yield delta
             yield _BANNER_MY if lang == "my" else _BANNER_EN
-
         except Exception as e:
             yield f"\n\n[error] {str(e)}"
         finally:
             try:
                 duration_ms = int((time.perf_counter() - t0) * 1000)
-                log_event("chat_stream",
-                          duration_ms=duration_ms,
+                log_event("chat_stream", duration_ms=duration_ms,
                           msg=redact(req.message)[:400],
-                          topic=sess.get("topic"),
-                          step=sess.get("step"))
+                          topic=sess.get("topic"), step=sess.get("step"))
             except Exception:
                 pass
 
@@ -256,48 +258,34 @@ async def chat_stream(req: ChatRequest):
 # ===============   NON-STREAM CHAT  ===============
 # ==================================================
 @router.post("/chat", response_model=ChatResponse)
-async def chat(req: ChatRequest):
+async def chat(req: ChatRequest, request: Request):
     t0 = time.perf_counter()
-
-    # ---------- 0) Language ----------
     lang = detect_language(req.message, hint=getattr(req, "lang_hint", None))
 
-    # ---------- 1) Scope check ----------
     in_scope, lang_gate = scope_check(req.message)
     if not in_scope:
         banner = _BANNER_MY if lang_gate == "my" else _BANNER_EN
         return ChatResponse(
             reply=(OUT_OF_SCOPE_MY if lang_gate == "my" else OUT_OF_SCOPE_EN) + banner,
             language=lang_gate,
-            reasoning=Reasoning(
-                intent="out_of_scope",
-                confidence=1.0,
-                matched="",
-                safety_notes=[],
-            ),
+            reasoning=Reasoning(intent="out_of_scope", confidence=1.0, matched="", safety_notes=[]),
         )
 
-    # ---------- 2) Session & Follow-up ----------
     lower_msg = req.message.lower()
-    sess_key = getattr(req, "session_id", None) or f"{req.client.host or 'anon'}"
+    sess_key = _session_key(req, request)
     sess = _SESS[sess_key]
     sess["lang"] = lang
     is_fup = is_followup(req.message, lang)
     sess["hist"].append(("user", req.message))
 
-    # Quick reset hook (optional)
     if lower_msg.strip() in {"reset", "restart"} or (lang == "my" and lower_msg.strip() in {"ပြန်စ", "အစပြန်"}):
         _SESS[sess_key] = {"topic": None, "step": 0, "lang": lang, "hist": deque(maxlen=6)}
         reply = ("Context cleared. Tell me the issue again." if lang == "en"
                  else "အကြောင်းအရာကို ရှင်းလင်းပြီးပြန်စတင်လိုက်ပါ။ ပြန်၍ ပြောပြပါ။")
         banner = _BANNER_MY if lang == "my" else _BANNER_EN
-        return ChatResponse(
-            reply=reply + banner,
-            language=lang,
-            reasoning=Reasoning(intent="reset", confidence=1.0, matched="", safety_notes=[]),
-        )
+        return ChatResponse(reply=reply + banner, language=lang,
+                            reasoning=Reasoning(intent="reset", confidence=1.0, matched="", safety_notes=[]))
 
-    # ---------- 3) Rule engine ----------
     m = rules.match(req.message, lang_hint=lang)
     intent = m.get("intent")
     reply = ""
@@ -305,14 +293,12 @@ async def chat(req: ChatRequest):
     used_ai = False
 
     if intent:
-        # New topic or topic switch resets step to 0
         if not is_fup or sess.get("topic") != intent:
             sess["topic"] = intent
             sess["step"] = 0
 
         steps = get_flow_steps(intent, lang)
         if steps:
-            # Has a predefined flow → step through it
             if is_fup:
                 sess["step"] = min(sess["step"] + 1, len(steps) - 1)
             idx = sess["step"]
@@ -324,7 +310,6 @@ async def chat(req: ChatRequest):
             reply += "\n\n" + ("Say 'done' when finished." if lang == "en" else "ပြီးရင် 'ပြီးပြီ' လို့ ပြောပါ။")
             conf = max(conf, 0.9)
         else:
-            # No flow defined → AI continuation for follow-ups (keeps scenario going)
             if is_fup and req.allow_ai_fallback and _get_openai_client() is not None:
                 ai_ans = await ai_continue(ai, sess, req.message, lang)
                 if ai_ans:
@@ -332,15 +317,12 @@ async def chat(req: ChatRequest):
                     conf = max(conf, 0.7)
                     used_ai = True
 
-    # Confidence-aware fallback logic
     if not reply:
         strong = conf >= CONF_STRONG
         weak   = conf < CONF_WEAK
-
         if strong:
             reply = m.get("answer") or ""
         elif not weak:
-            # medium: prefer rule answer, but try continuation if follow-up & AI available
             reply = m.get("answer") or ""
             if is_fup and req.allow_ai_fallback and _get_openai_client() is not None:
                 ai_ans = await ai_continue(ai, sess, req.message, lang)
@@ -348,7 +330,6 @@ async def chat(req: ChatRequest):
                     reply = ai_ans
                     used_ai = True
         else:
-            # weak: prefer AI (continuation first if follow-up)
             if req.allow_ai_fallback and _get_openai_client() is not None:
                 if is_fup:
                     ai_ans = await ai_continue(ai, sess, req.message, lang)
@@ -358,56 +339,34 @@ async def chat(req: ChatRequest):
                     reply = ai_ans
                     used_ai = True
 
-    # ---------- 4) Default if still empty ----------
     if not reply:
-        reply = (
-            "I can’t fully confirm this from my rules. "
-            "Please use your bank’s official app/website or hotline for account actions. "
-            "If this looks like a scam, don’t click links or share codes."
-            if lang == "en"
-            else "စည်းမျဉ်းအခြေပြု အဖြေမရှိသေးပါ။ ကိုယ်ရေးအကောင့်ဆိုင်ရာလုပ်ဆောင်ချက်များအတွက် "
-                 "ဘဏ်၏ တရားဝင် App/Website သို့မဟုတ် Hotline ကိုသာ သုံးပါ။ "
-                 "လိမ်လည်မှုဖြစ်နိုင်ပါက Link မနှိပ်ပါနှင့်၊ OTP/PIN မမျှဝေပါနှင့်။"
-        )
+        reply = ("I can’t fully confirm this from my rules. "
+                 "Please use your bank’s official app/website or hotline for account actions. "
+                 "If this looks like a scam, don’t click links or share codes."
+                 if lang == "en"
+                 else "စည်းမျဉ်းအခြေပြု အဖြေမရှိသေးပါ။ ကိုယ်ရေးအကောင့်ဆိုင်ရာလုပ်ဆောင်ချက်များအတွက် "
+                      "ဘဏ်၏ တရားဝင် App/Website သို့မဟုတ် Hotline ကိုသာ သုံးပါ။ "
+                      "လိမ်လည်မှုဖြစ်နိုင်ပါက Link မနှိပ်ပါနှင့်၊ OTP/PIN မမျှဝေပါနှင့်။")
 
-    # ---------- 5) Safety banner ----------
     banner = _BANNER_MY if lang == "my" else _BANNER_EN
     safe_reply = redact(reply) + banner
-
-    # Save assistant reply into short history
     if safe_reply:
         sess["hist"].append(("assistant", safe_reply))
 
-    # ---------- 6) LOG ----------
     duration_ms = int((time.perf_counter() - t0) * 1000)
     try:
-        log_event(
-            "chat",
-            duration_ms=duration_ms,
-            lang=lang,
-            intent=intent,
-            confidence=round(conf, 3),
-            matched=m.get("matched"),
-            used_ai=used_ai,
-            allow_ai=req.allow_ai_fallback,
-            topic=sess.get("topic"),
-            step=sess.get("step"),
-            msg=redact(req.message),
-            reply_preview=safe_reply[:220],
-        )
+        log_event("chat", duration_ms=duration_ms, lang=lang, intent=intent,
+                  confidence=round(conf, 3), matched=m.get("matched"),
+                  used_ai=used_ai, allow_ai=req.allow_ai_fallback,
+                  topic=sess.get("topic"), step=sess.get("step"),
+                  msg=redact(req.message), reply_preview=safe_reply[:220])
     except Exception:
         pass
 
-    return ChatResponse(
-        reply=safe_reply,
-        language=lang,
-        reasoning=Reasoning(
-            intent=intent,
-            confidence=conf,
-            matched=m.get("matched"),
-            safety_notes=m.get("safety_notes", []),
-        ),
-    )
+    return ChatResponse(reply=safe_reply, language=lang,
+                        reasoning=Reasoning(intent=intent, confidence=conf,
+                                            matched=m.get("matched"),
+                                            safety_notes=m.get("safety_notes", [])))
 
 # ==================================================
 # ===============   ANALYZE   ======================
@@ -419,20 +378,14 @@ async def analyze_text(req: AnalyzeRequest):
     text = req.text or " ".join(req.urls or [])
     res = scams.analyze_text(text, lang_hint=req.lang_hint)
     findings = [RiskFinding(**f) for f in res["findings"]]
-
     try:
         log_event("analyze", lang=res.get("language", "en"),
                   score=res.get("score"), risk_level=res.get("risk_level"),
                   findings=len(findings), text=redact(text)[:400])
     except Exception:
         pass
-
-    return RiskReport(
-        risk_level=res["risk_level"],
-        score=res["score"],
-        findings=findings,
-        language=res["language"],
-    )
+    return RiskReport(risk_level=res["risk_level"], score=res["score"],
+                      findings=findings, language=res["language"])
 
 # ==================================================
 # ===============   UPLOAD   =======================
