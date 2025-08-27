@@ -4,29 +4,32 @@ import json
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.nlp.lang import normalize as _normalize  # already present in your repo
+from app.nlp.lang import normalize as _normalize  # normalize (handles Myanmar variants)
 
+# ---------- matching helpers (keep these; do NOT redefine later) ----------
 def _prep(text: str) -> str:
     return _normalize(text or "")
 
 def _score_hit(text: str, patt: str) -> float:
-    # text is expected normalized already
+    """Regex/contains score. 'text' must already be normalized."""
     try:
         if re.search(patt, text, flags=re.I):
             return 1.0
     except re.error:
+        # invalid regex → fallback to substring contains
         if patt.lower() in text.lower():
             return 0.8
     return 0.0
 
 def _fuzzy(a: str, b: str) -> float:
-    # tiny, dependency-free fuzzy fallback
+    """Very light fuzzy match with normalized inputs."""
     from difflib import SequenceMatcher
-    return SequenceMatcher(None, a, b).ratio()
+    return SequenceMatcher(None, _prep(a), _prep(b)).ratio()
 
-def _candidates(entries, text: str):
-    tnorm = _prep(text)  # <<< normalize here
-    scored = []
+def _candidates(entries: List[Dict[str, Any]], text: str) -> List[Tuple[str, float, Dict[str, Any]]]:
+    """Return [(intent, score, entry), ...] sorted by score desc."""
+    tnorm = _prep(text)
+    scored: List[Tuple[str, float, Dict[str, Any]]] = []
     for e in entries:
         patt = e.get("patterns", []) or []
         syns = e.get("synonyms", []) or []
@@ -35,15 +38,17 @@ def _candidates(entries, text: str):
             s += _score_hit(tnorm, p)
         for p in syns:
             s += _score_hit(tnorm, p) * 0.6
-        # light fuzzy on plain phrases if nothing hit
-        if s == 0.0:
+        # gentle fuzzy if nothing hit
+        if s == 0.0 and patt:
             for p in patt[:3]:
-                s = max(s, _fuzzy(tnorm, _prep(p)) * 0.6)
+                s = max(s, _fuzzy(tnorm, p) * 0.6)
         if s > 0:
             e["matched"] = ", ".join((patt[:2] + syns[:2])[:4])
             scored.append((e.get("intent") or "", s, e))
     scored.sort(key=lambda x: x[1], reverse=True)
     return scored
+# -------------------------------------------------------------------------
+
 
 # --- Language helper (keeps working even if nlp module is missing) ---
 try:
@@ -60,19 +65,24 @@ def detect_language(text: str, hint: Optional[str] = None) -> str:
     except Exception:
         return "my" if any("\u1000" <= ch <= "\u109F" for ch in (text or "")) else (hint or "en")
 
+
+# ---------- follow-up resolver ("number 2" / "ဒုတိယ" / "နံပါတ် ၂") ----------
 _MM_DIGITS = str.maketrans("၀၁၂၃၄၅၆၇၈၉", "0123456789")
-_ORD_MAP = {"first":1,"1st":1,"second":2,"2nd":2,"third":3,"3rd":3,"fourth":4,"4th":4,
-            "ပထမ":1,"ဒုတိယ":2,"တတိယ":3,"စတုတ္ထ":4}
+_ORD_MAP = {"first": 1, "1st": 1, "second": 2, "2nd": 2, "third": 3, "3rd": 3, "fourth": 4, "4th": 4,
+            "ပထမ": 1, "ဒုတိယ": 2, "တတိယ": 3, "စတုတ္ထ": 4}
 
 def _extract_index(text: str) -> int | None:
     s = _prep(text).translate(_MM_DIGITS)
     m = re.search(r"(?:no\.?|number|item|#)\s*(\d+)|\b(1st|2nd|3rd|4th|first|second|third|fourth)\b", s, re.I)
     if not m:
         m = re.search(r"(?:နံပါတ်|အမှတ်)\s*(\d+)|\b(ပထမ|ဒုတိယ|တတိယ|စတုတ္ထ)\b", s, re.I)
-    if not m: return None
+    if not m:
+        return None
     g = next((x for x in m.groups() if x), None)
-    if not g: return None
-    if g.isdigit(): return int(g)
+    if not g:
+        return None
+    if g.isdigit():
+        return int(g)
     return _ORD_MAP.get(g.lower())
 
 # hold the last structured list (very light state)
@@ -86,10 +96,12 @@ def resolve_followup(user_text: str) -> str | None:
     idx = _extract_index(user_text)
     if not idx or not _last_list or idx < 1 or idx > len(_last_list):
         return None
-    it = _last_list[idx-1]
-    title = it.get("title","")
+    it = _last_list[idx - 1]
+    title = it.get("title", "")
     detail = it.get("detail") or it.get("summary") or ""
     return f"{idx}. {title} — details:\n{detail}"
+
+
 # =========================
 # ===== Rule Engine =======
 # =========================
@@ -182,8 +194,7 @@ class RuleEngine:
         }
 
 
-# ---- helpers ----
-
+# ---- answer rendering helpers (kept; duplicates removed) ----
 def _normalize_answers(ans: Any, lang: str) -> List[str]:
     if ans is None:
         return []
@@ -208,31 +219,6 @@ def _render_answer(ans: Any, lang: str) -> str:
     if len(parts) == 1:
         return parts[0]
     return "\n".join(f"• {p}" for p in parts)
-
-def _score_hit(text: str, patt: str) -> float:
-    try:
-        if re.search(patt, text, flags=re.I):
-            return 1.0
-    except re.error:
-        if patt.lower() in text.lower():
-            return 0.8
-    return 0.0
-
-def _candidates(entries: List[Dict[str, Any]], text: str) -> List[Tuple[str, float, Dict[str, Any]]]:
-    scored: List[Tuple[str, float, Dict[str, Any]]] = []
-    for e in entries:
-        patt = e.get("patterns", []) or []
-        syns = e.get("synonyms", []) or []
-        s = 0.0
-        for p in patt:
-            s += _score_hit(text, p)
-        for p in syns:
-            s += _score_hit(text, p) * 0.6
-        if s > 0:
-            e["matched"] = ", ".join((patt[:2] + syns[:2])[:4])
-            scored.append((e.get("intent") or "", s, e))
-    scored.sort(key=lambda x: x[1], reverse=True)
-    return scored
 
 
 # =========================
