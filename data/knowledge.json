@@ -415,6 +415,35 @@
     },
 
     {
+  "intent": "mandatory_training_new_staff",
+  "patterns": [
+    "ဘဏ်ဝန်ထမ်းအသစ်အနေနဲ့မဖြစ်မနေတက်သင့်တဲ့သင်တန်းတွေကဘာလဲ",
+    "ဝန်ထမ်းအသစ်အတွက် မဖြစ်မနေ သင်တန်းတွေ ဘာတွေလဲ",
+    "အသစ်ဝင်ဝန်ထမ်းတွေ ဘာသင်တန်းတွေ တက်ရမလဲ"
+  ],
+  "synonyms": [
+    "mandatory training for new bank staff",
+    "required onboarding courses for new employees"
+  ],
+  "answers": {
+    "my": [
+      "AML/KYC အခြေခံ—ဖောက်သည်မိတ်ဆက်ခြင်း၊ ငွေလွှဲမှုဖြိုင်​းမှု တားဆီးမှု",
+      "Data Protection & Privacy—ဖောက်သည်ဒေတာ လက်ခံ/သိုလှောင်/ဝေငှ ပြုမူစည်းမျဉ်း",
+      "Cybersecurity Awareness—phishing/smishing, password, 2FA, device policy",
+      "Code of Conduct & Anti-Bribery—တရားစည်းကမ်း၊ အကျင့်စည်းကမ်း",
+      "Incident Reporting—အရေးပေါ်အချိန်တွင် ဘယ်လို တိုင်ကြား/မှတ်တမ်းတင်"
+    ],
+    "en": [
+      "AML/KYC basics",
+      "Data protection & privacy",
+      "Cybersecurity awareness (phishing/password/2FA/device)",
+      "Code of conduct & anti-bribery",
+      "Incident reporting procedure"
+    ]
+  }
+},
+
+    {
       "intent": "insider_leak_suspected",
       "audience": ["internal"],
       "patterns": [

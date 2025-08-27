@@ -4,6 +4,47 @@ import json
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
+from app.nlp.lang import normalize as _normalize  # already present in your repo
+
+def _prep(text: str) -> str:
+    return _normalize(text or "")
+
+def _score_hit(text: str, patt: str) -> float:
+    # text is expected normalized already
+    try:
+        if re.search(patt, text, flags=re.I):
+            return 1.0
+    except re.error:
+        if patt.lower() in text.lower():
+            return 0.8
+    return 0.0
+
+def _fuzzy(a: str, b: str) -> float:
+    # tiny, dependency-free fuzzy fallback
+    from difflib import SequenceMatcher
+    return SequenceMatcher(None, a, b).ratio()
+
+def _candidates(entries, text: str):
+    tnorm = _prep(text)  # <<< normalize here
+    scored = []
+    for e in entries:
+        patt = e.get("patterns", []) or []
+        syns = e.get("synonyms", []) or []
+        s = 0.0
+        for p in patt:
+            s += _score_hit(tnorm, p)
+        for p in syns:
+            s += _score_hit(tnorm, p) * 0.6
+        # light fuzzy on plain phrases if nothing hit
+        if s == 0.0:
+            for p in patt[:3]:
+                s = max(s, _fuzzy(tnorm, _prep(p)) * 0.6)
+        if s > 0:
+            e["matched"] = ", ".join((patt[:2] + syns[:2])[:4])
+            scored.append((e.get("intent") or "", s, e))
+    scored.sort(key=lambda x: x[1], reverse=True)
+    return scored
+
 # --- Language helper (keeps working even if nlp module is missing) ---
 try:
     from app.nlp.lang import detect_language as _detect_language  # type: ignore
@@ -19,7 +60,36 @@ def detect_language(text: str, hint: Optional[str] = None) -> str:
     except Exception:
         return "my" if any("\u1000" <= ch <= "\u109F" for ch in (text or "")) else (hint or "en")
 
+_MM_DIGITS = str.maketrans("၀၁၂၃၄၅၆၇၈၉", "0123456789")
+_ORD_MAP = {"first":1,"1st":1,"second":2,"2nd":2,"third":3,"3rd":3,"fourth":4,"4th":4,
+            "ပထမ":1,"ဒုတိယ":2,"တတိယ":3,"စတုတ္ထ":4}
 
+def _extract_index(text: str) -> int | None:
+    s = _prep(text).translate(_MM_DIGITS)
+    m = re.search(r"(?:no\.?|number|item|#)\s*(\d+)|\b(1st|2nd|3rd|4th|first|second|third|fourth)\b", s, re.I)
+    if not m:
+        m = re.search(r"(?:နံပါတ်|အမှတ်)\s*(\d+)|\b(ပထမ|ဒုတိယ|တတိယ|စတုတ္ထ)\b", s, re.I)
+    if not m: return None
+    g = next((x for x in m.groups() if x), None)
+    if not g: return None
+    if g.isdigit(): return int(g)
+    return _ORD_MAP.get(g.lower())
+
+# hold the last structured list (very light state)
+_last_list: list[dict] | None = None
+
+def set_last_list(items: list[dict] | None):
+    global _last_list
+    _last_list = items
+
+def resolve_followup(user_text: str) -> str | None:
+    idx = _extract_index(user_text)
+    if not idx or not _last_list or idx < 1 or idx > len(_last_list):
+        return None
+    it = _last_list[idx-1]
+    title = it.get("title","")
+    detail = it.get("detail") or it.get("summary") or ""
+    return f"{idx}. {title} — details:\n{detail}"
 # =========================
 # ===== Rule Engine =======
 # =========================
