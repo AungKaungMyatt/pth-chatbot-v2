@@ -1,24 +1,23 @@
 # app/engine/rule_engine.py
 from __future__ import annotations
 import json
-import os
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
-# --- Language helper (keep import but also safe fallback) ---
+# --- Language helper (keeps working even if nlp module is missing) ---
 try:
-    from app.nlp.lang import detect_language as _detect_language
-except Exception:
+    from app.nlp.lang import detect_language as _detect_language  # type: ignore
+except Exception:  # fallback if import not available
     def _detect_language(text: str, hint: Optional[str] = None) -> str:
-        # naive: if contains Myanmar range, assume Burmese
-        return "my" if any("\u1000" <= ch <= "\u109F" for ch in text) else (hint or "en")
+        # naive: if Myanmar Unicode chars present → Burmese
+        return "my" if any("\u1000" <= ch <= "\u109F" for ch in (text or "")) else (hint or "en")
 
 
 def detect_language(text: str, hint: Optional[str] = None) -> str:
     try:
         return _detect_language(text, hint=hint)
     except Exception:
-        return "my" if any("\u1000" <= ch <= "\u109F" for ch in text) else (hint or "en")
+        return "my" if any("\u1000" <= ch <= "\u109F" for ch in (text or "")) else (hint or "en")
 
 
 # =========================
@@ -70,7 +69,7 @@ class RuleEngine:
                 "score": round(score, 3),
                 "matched": entry.get("matched", ""),
                 "has_flow": bool(entry.get("flow")),
-                "has_escalation": bool(entry.get("escalation"))
+                "has_escalation": bool(entry.get("escalation")),
             })
         return {"language": lang, "candidates": out}
 
@@ -94,7 +93,7 @@ class RuleEngine:
 
         intent, score, entry = cands[0]
         answer = _render_answer(entry.get("answers"), lang)
-        # include flow/escalation so router can step
+
         flow = None
         esc = None
         if isinstance(entry.get("flow"), dict):
@@ -109,7 +108,7 @@ class RuleEngine:
             "matched": entry.get("matched", ""),
             "safety_notes": entry.get("safety_notes", []),
             "flow": flow,
-            "escalation": esc
+            "escalation": esc,
         }
 
 
@@ -136,13 +135,11 @@ def _render_answer(ans: Any, lang: str) -> str:
     parts = _normalize_answers(ans, lang)
     if not parts:
         return ""
-    # If it's a list, render as short bullets.
     if len(parts) == 1:
         return parts[0]
     return "\n".join(f"• {p}" for p in parts)
 
 def _score_hit(text: str, patt: str) -> float:
-    # keyword or regex; default weight 1.0
     try:
         if re.search(patt, text, flags=re.I):
             return 1.0
@@ -171,31 +168,118 @@ def _candidates(entries: List[Dict[str, Any]], text: str) -> List[Tuple[str, flo
 # =========================
 # ===== Scope Check =======
 # =========================
-# Broad allowlists for banking + security (EN + MY)
-_ALLOW_BANKING = [
-    r"\bbank\b", r"\bbranch\b", r"\bstatement\b", r"\binterest\b", r"\bfee(s)?\b",
-    r"\baccount\b", r"\bcard\b", r"\btransfer\b", r"\btransaction\b",
-    r"ဘဏ်", r"ဘဏ်ခွဲ", r"စာရင်း", r"အတိုး", r"ကြေးငွေ", r"ကတ်", r"ငွေလွှဲ", r"ငွေလုပ်ငန်း"
-]
-_ALLOW_SECURITY = [
-    r"phish|smish|vish|scam|fraud|otp|2fa|password|malware|ransomware|breach|sim\s*swap|qr\s*code|skimming",
-    r"လိမ်|လှည့်စား|လိမ်လည်|OTP|2FA|စကားဝှက်|ဗိုင်းရပ်စ်|ဒေတာ\s*ယို|SIM\s*ပြောင်း|QR|skimming|ချိုးဖောက်"
+# The scope is broad: banking + cybersecurity for both customers & employees.
+# We still tag personal account actions as "sensitive" so the router can
+# respond with a polite redirect (no account operations).
+
+# -- Banking domain (EN) --
+_BANKING_GENERAL_EN = [
+    r"\bbank(s)?\b", r"\bbranch(es)?\b", r"\baccount(s)?\b", r"\bstatement(s)?\b",
+    r"\bfee(s)?\b", r"\binterest\b", r"\bsavings?\b", r"\bcurrent account\b",
+    r"\bchecking\b", r"\bdeposit\b", r"\bwithdraw(al)?\b", r"\bloan(s)?\b",
+    r"\bmortgage(s)?\b", r"\binstallment\b", r"\bterm deposit\b", r"\btime deposit\b",
+    r"\bcertificate of deposit\b", r"\btreasury\b", r"\bremittance\b", r"\bwire\b",
+    r"\btelegraphic transfer\b", r"\bswift\b", r"\bexchange rate\b",
+    r"\bforeign exchange\b", r"\bfx\b", r"\bcheque|checkbook|chequebook\b",
+    r"\boverdraft\b",
 ]
 
-# Obvious out-of-scope topics (safe deny)
+# -- Banking domain (MY) --
+_BANKING_GENERAL_MY = [
+    r"ဘဏ်", r"ဘဏ်ခွဲ", r"အကောင့်", r"စာရင်းပြ", r"ကြေးငွေ", r"အတိုး",
+    r"သိုလှောင်ငွေ|အစုဆောင်း", r"လက်ကျန်", r"ငွေသွင်း|ငွေထုတ်",
+    r"ချေးငွေ", r"အရစ်ကျ", r"ကြာချိန် သိုလှောင်ငွေ", r"SWIFT",
+    r"အပြည်ပြည်ဆိုင်ရာ ငွေလွှဲ", r"ငွေလွှဲ|ပို့ရန်", r"ငွေကြေးအပြောင်းအလဲနှုန်း",
+    r"လက်မှတ်စာရင်း|cheque|check",
+]
+
+# -- Digital channels / payments / cards (EN) --
+_CHANNELS_EN = [
+    r"\bonline banking\b", r"\bmobile banking\b", r"\bapp\b", r"\bnetbank\b",
+    r"\bdebit card\b", r"\bcredit card\b", r"\bvirtual card\b", r"\batm\b",
+    r"\bpoint of sale\b", r"\bpos\b", r"\bmerchant\b", r"\bqr(\s*code)?\b",
+    r"\bcard not present\b", r"\bchargeback(s)?\b", r"\bdispute(s)?\b",
+    r"\bcharge(s)?\b", r"\bauto[- ]debit|standing order\b",
+    r"\balert(s)?\b|\bnotification(s)?\b",
+]
+
+# -- Digital channels / payments / cards (MY) --
+_CHANNELS_MY = [
+    r"အွန်လိုင်း ဘဏ်", r"မိုဘိုင်း ဘဏ်", r"အက်ပ်", r"ကတ်|ဒက်ဘစ်ကတ်|ကရက်ဒစ်ကတ်",
+    r"ATM", r"POS", r"ကုန်သည်", r"QR", r"ပြန်လည်တင်သွင်း|ပြန်ညှိ",
+    r"Auto[- ]debit|အလိုအလျောက် ငွေဖြတ်", r"အသိပေးချက်",
+]
+
+# -- Cybersecurity (EN) --
+_SECURITY_EN = [
+    r"phish|smish|vish|scam|fraud|spoof|impersonat",
+    r"\botp\b|\bpin\b|\b2fa\b|\bmfa\b",
+    r"password|passphrase|credential(s)?",
+    r"malware|virus|trojan|spyware|ransomware",
+    r"breach|data leak|exfiltration|compromise",
+    r"sim\s*swap|port[- ]out",
+    r"qr\s*code phishing|qrishing",
+    r"device security|lost phone|stolen laptop",
+    r"privacy|gdpr|ccpa|compliance|audit|policy|kyc",
+    r"incident response|soc|siem|edr|dlp|removable media|usb|data loss",
+]
+
+# -- Cybersecurity (MY) --
+_SECURITY_MY = [
+    r"လိမ်|လှည့်စား|လိမ်လည်",
+    r"OTP|PIN|2FA|အတည်ပြု ကုဒ်",
+    r"စကားဝှက်|စကားစု",
+    r"ဗိုင်းရပ်စ်|မော်ဝဲ",
+    r"ဒေတာ ယို|ဖောက်ဖျက်",
+    r"SIM ပြောင်း|port out",
+    r"QR လိမ်လည်",
+    r"ကိရိယာ လုံခြုံရေး|ဖုန်း ပျောက်|လက်ပ်တော့ ခိုး",
+    r"privacy|compliance|audit|policy|KYC",
+    r"Incident Response|SOC|EDR|DLP|USB|အချက်အလက် ဆုံးရှုံး",
+]
+
+# -- Employee-focused (EN & MY) --
+_EMPLOYEE_EN = [
+    r"\bemployee\b|\bstaff\b|\bteller\b|\bcsr\b|\bagent\b",
+    r"policy|procedure|sop|playbook|handbook|standard operating",
+    r"customer information handling|pci|data handling|clean desk",
+    r"usb|removable media|external drive|shadow it|byod",
+]
+_EMPLOYEE_MY = [
+    r"ဝန်ထမ်း|တယ်လာ|ဘဏ်ဝန်ထမ်း",
+    r"မူဝါဒ|လုပ်ထုံးလုပ်နည်း|လမ်းညွှန်",
+    r"ဖောက်သည် အချက်အလက် ကိုင်တွယ်မှု|clean desk",
+    r"USB|external drive|BYOD",
+]
+
+# -- Customer-focused (EN & MY) --
+_CUSTOMER_EN = [
+    r"statement|fee|limit|alert|notification|how to|enable|disable|turn on|turn off",
+    r"card block|freeze|unfreeze|dispute|chargeback|unknown transaction|refund",
+    r"privacy request|data deletion|opt[- ]out",
+]
+_CUSTOMER_MY = [
+    r"စာရင်းပြ|ကြေးငွေ|ကန့်သတ်|အသိပေးချက်|ဘယ်လို|ဖွင့်|ပိတ်",
+    r"ကတ်ပိတ်|အကောင့် ပိတ်|မဟုတ်သော လုပ်ဆောင်မှု|ပြန်အမ်း|တိုင်ကြား",
+    r"ကိုယ်ရေး အချက်အလက် တောင်းဆို|ဖျက်|မမျှဝေ​ចား",
+]
+
+# -- Obvious out-of-scope topics (safe deny) --
 _DENY = [
     r"\b(recipe|cooking|football|nba|weather|flight|hotel|programming|python|javascript|homework|math|calculus)\b",
-    r"မိုးလေဝသ|စားချက်|ဘောလုံး|ခရီးစဉ်|ဟိုတယ်|ပရိုဂရမ်းမင်း|ကိုးနှစ်သင်္ချာ"
+    r"မိုးလေဝသ|စားချက်|ဘောလုံး|ခရီး|ဟိုတယ်|ပရိုဂရမ်|သင်ခန်းစာ",
 ]
 
-# Sensitive-but-allowed (redirect with polite answer)
+# -- Sensitive account actions (still allowed but redirected) --
 _SENSITIVE_ACCOUNT_EN = (
     "balance", "transfer", "send money", "wire", "deposit", "withdraw",
-    "statement", "loan", "investment", "kyc", "update details", "check my account"
+    "statement", "loan", "investment", "kyc", "update details", "check my account",
+    "open account", "close account", "limit increase", "card pin", "pin reset",
 )
 _SENSITIVE_ACCOUNT_MY = (
     "လက်ကျန်", "ငွေလွဲ", "ငွေ ပို့", "ငွေသွင်း", "ငွေထုတ်", "statement",
-    "ချေးငွေ", "ရင်းနှီးမြှုပ်နှံ", "KYC", "အချက်အလက် ပြောင်း", "အကောင့် စစ်"
+    "ချေးငွေ", "ရင်းနှီးမြှုပ်နှံ", "KYC", "အချက်အလက် ပြောင်း", "အကောင့် စစ်",
+    "အကောင့်ဖွင့်", "အကောင့်ပိတ်", "ကန့်သတ် တိုး", "ကတ် PIN", "PIN ပြန်သတ်မှတ်",
 )
 
 def _any_regex(patterns: List[str], text: str) -> bool:
@@ -205,16 +289,18 @@ def _any_phrase(text: str, phrases: tuple[str, ...]) -> bool:
     t = text.casefold()
     return any(ph.casefold() in t for ph in phrases)
 
-def scope_check(user_text: str, *, rules: Optional[RuleEngine] = None) -> Tuple[bool, str, str, str]:
+def scope_check(user_text: str, *, rules: Optional["RuleEngine"] = None) -> Tuple[bool, str, str, str]:
     """
     Returns: (in_scope: bool, lang: 'en'|'my', reason: str, tag: 'normal'|'sensitive'|'deny')
+      - 'sensitive' → personal account actions; router should answer with
+        the 'personal_account_scope' intent (polite redirect).
     """
     lang = detect_language(user_text) or "en"
     t = (user_text or "").strip()
     if not t:
         return False, lang, "empty", "deny"
 
-    # 1) If knowledge has a match → in scope (and sensitive if personal account)
+    # 1) If the knowledge base already matches, it's in scope.
     if rules is not None:
         m = rules.match(t, lang_hint=lang)
         if m and m.get("intent"):
@@ -226,12 +312,19 @@ def scope_check(user_text: str, *, rules: Optional[RuleEngine] = None) -> Tuple[
     if _any_regex(_DENY, t):
         return False, lang, "denylist", "deny"
 
-    # 3) Broad allow if banking/security keywords appear
-    if _any_regex(_ALLOW_BANKING, t) or _any_regex(_ALLOW_SECURITY, t):
+    # 3) Broad allow across BANKING + CYBERSEC (customers & employees)
+    allow = (
+        _any_regex(_BANKING_GENERAL_EN, t) or _any_regex(_BANKING_GENERAL_MY, t) or
+        _any_regex(_CHANNELS_EN, t) or _any_regex(_CHANNELS_MY, t) or
+        _any_regex(_SECURITY_EN, t) or _any_regex(_SECURITY_MY, t) or
+        _any_regex(_EMPLOYEE_EN, t) or _any_regex(_EMPLOYEE_MY, t) or
+        _any_regex(_CUSTOMER_EN, t) or _any_regex(_CUSTOMER_MY, t)
+    )
+    if allow:
         tag = "sensitive" if (_any_phrase(t, _SENSITIVE_ACCOUNT_EN) or _any_phrase(t, _SENSITIVE_ACCOUNT_MY)) else "normal"
         return True, lang, "broad_allow", tag
 
-    # 4) Soft allow for general greetings mentioning bank/security
+    # 4) Soft allow for very general banking/security queries & greetings
     if re.search(r"\b(help|hello|hi|what can you do|bank|security)\b", t, flags=re.I) or ("ဘဏ်" in t):
         return True, lang, "soft_allow", "normal"
 
