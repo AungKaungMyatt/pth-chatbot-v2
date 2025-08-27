@@ -1,6 +1,6 @@
 import os
-from typing import Optional
-from openai import AsyncOpenAI  # ⬅️ async client
+from typing import Optional, List, Tuple
+from openai import AsyncOpenAI  # async client
 
 SYSTEM_EN = (
     "You are a banking cybersecurity educator for the public. "
@@ -22,33 +22,74 @@ SYSTEM_MY = (
 class AIFallback:
     def __init__(self):
         self.enabled = bool(os.getenv("OPENAI_API_KEY"))
-        # configurable server-side timeout (seconds)
         self.timeout = int(os.getenv("LLM_TIMEOUT", "60"))
-        # async client with a sensible timeout; keep small retry count
         self.client = AsyncOpenAI(timeout=self.timeout, max_retries=2) if self.enabled else None
-        # cost-efficient default model
         self.model = os.getenv("AI_MODEL", "gpt-4o-mini")
 
     async def answer(self, user_text: str, language: str) -> Optional[str]:
+        """
+        Standard AI fallback with fixed system prompt (English or Myanmar).
+        """
         if not (self.enabled and self.client):
             return None
 
         system_prompt = SYSTEM_MY if language == "my" else SYSTEM_EN
 
         try:
-            # Responses API (v1) — async, with per-request timeout
             resp = await self.client.responses.create(
                 model=self.model,
                 input=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_text},
                 ],
-                max_output_tokens=400,   # a little more room than your previous 250
+                max_output_tokens=400,
                 temperature=0.2,
                 timeout=self.timeout,
             )
             out = getattr(resp, "output_text", None)
             return out.strip() if out else None
         except Exception:
-            # Fail gracefully back to rule engine
+            return None
+
+    async def answer_with_system(
+        self,
+        system: str,
+        user_text: str,
+        lang: str,
+        context: Optional[List[Tuple[str, str]]] = None,
+    ) -> Optional[str]:
+        """
+        Flexible continuation mode.
+        - system: custom system prompt
+        - user_text: latest user input
+        - lang: "en" or "my"
+        - context: list of (role, message) tuples from recent turns
+        """
+        if not (self.enabled and self.client):
+            return None
+
+        # Default to language-specific base prompt if not provided
+        base_system = SYSTEM_MY if lang == "my" else SYSTEM_EN
+        system_prompt = system or base_system
+
+        # Build messages array
+        messages = [{"role": "system", "content": system_prompt}]
+        if context:
+            for role, msg in context:
+                if role not in {"user", "assistant"}:
+                    continue
+                messages.append({"role": role, "content": msg})
+        messages.append({"role": "user", "content": user_text})
+
+        try:
+            resp = await self.client.responses.create(
+                model=self.model,
+                input=messages,
+                max_output_tokens=400,
+                temperature=0.2,
+                timeout=self.timeout,
+            )
+            out = getattr(resp, "output_text", None)
+            return out.strip() if out else None
+        except Exception:
             return None

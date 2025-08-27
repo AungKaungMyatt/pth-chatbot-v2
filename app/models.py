@@ -5,6 +5,7 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1)
     lang_hint: Optional[str] = Field(None, description="Optional: 'en' or 'my'")
     allow_ai_fallback: bool = True
+    session_id: Optional[str] = Field(None, description="Client-provided session id for continuity")
 
 class Reasoning(BaseModel):
     intent: Optional[str] = None

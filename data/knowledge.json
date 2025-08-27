@@ -826,6 +826,30 @@
     },
 
     {
+      "intent": "wallet_balance_decreasing",
+      "patterns": ["kbzpay balance decreasing", "ငွေလျော့နေ", "..."],
+      "answers": { "en": "Short intro...", "my": "…" },
+      "flow": {
+        "en": [
+          "Check Linked Services: Me → Linked Services. Remove unknown merchants.",
+          "Bills & Subscriptions → Auto-debit: disable anything unfamiliar.",
+          "Security → Device Management: remove old/unknown devices.",
+          "Change login password & PIN (do not reuse)."
+        ],
+        "my": [
+          "Linked Services စစ်ဆေးပါ — မသိသူများ ဖယ်ရှားပါ။",
+          "Bills & Subscriptions → Auto-debit ပိတ်ပါ။",
+          "Security → Device Management မှ မသိ/ဟောင်းစက်များ ဖယ်ရှားပါ။",
+          "Login Password/PIN ပြောင်းပါ။"
+        ]
+      },
+      "escalation": {
+        "en": "If not resolved, contact KBZPay and request a temporary wallet freeze + dispute.",
+        "my": "မဖြေရှင်းပါက KBZPay သို့ ဆက်သွယ်၍ wallet freeze + dispute တင်ပါ။"
+      }
+    },
+
+    {
       "intent": "fake_reward_app",
       "patterns": [
         "reward app",
