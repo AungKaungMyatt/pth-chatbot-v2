@@ -745,6 +745,48 @@
       ]
     },
     {
+  "intent": "how_bank_uses_personal_info",
+  "patterns": [
+    "how bank uses my personal information",
+    "how does the bank use my personal information",
+    "how bank uses customer data",
+    "why bank collects my data",
+    "what does the bank do with my data",
+    "how my personal information is used by bank",
+    "ဘဏ်က ကိုယ်ရေးအချက်အလက်တွေကို ဘယ်လို အသုံးပြုလဲ",
+    "ဘဏ်က ဒေတာကို ဘာအတွက် သုံးလဲ",
+    "ဘဏ် အချက်အလက် အသုံးပြုမှု",
+    "ကိုယ်ရေး ဒေတာ ဘဏ် သုံးပုံ"
+  ],
+  "synonyms": [
+    "data usage by bank",
+    "customer data use",
+    "privacy policy summary",
+    "ပရိုက်ဗေဆီး မူဝါဒ",
+    "ဒေတာ သုံးပုံသုံးနည်း"
+  ],
+  "answers": {
+    "en": [
+      "Banks use personal information to **provide services and support** (open/maintain accounts, process payments, verify identity under KYC/AML).",
+      "To **protect customers and the bank** (fraud monitoring, security, incident investigation).",
+      "To **meet legal/regulatory duties** (records, reporting, sanctions screening).",
+      "To **improve products and communicate** about features or offers **according to your choices**; you can usually opt out of marketing.",
+      "Data may be shared with **service providers** under contracts; reputable banks **do not sell** your personal data. For exact details, check your bank’s **official privacy policy** in the app/website."
+    ],
+    "my": [
+      "ဘဏ်များသည် ကိုယ်ရေးအချက်အလက်များကို **ဝန်ဆောင်မှုပေးရန်** (အကောင့်ဖွင့်/ထိန်းသိမ်း, ငွေပေးချေခြင်း, KYC/AML အတည်ပြုခြင်း) ဆောင်ရွက်ရာတွင် အသုံးပြုသည်။",
+      "**ဖောက်သည်များနှင့် ဘဏ်ကိုကာကွယ်ရန်** (Fraud စောင့်ကြည့်ခြင်း, လုံခြုံရေး, ဖြစ်ရပ်စုံစမ်းခြင်း) အသုံးပြုသည်။",
+      "**ဥပဒေ/အကြမ်းဖျဉ်းလိုအပ်ချက်များ** (မှတ်တမ်းထားခြင်း, အစီရင်ခံခြင်း, ပိတ်ချက်စစ်ဆေးခြင်း) ဖြည့်ဆည်းရန် အသုံးပြုသည်။",
+      "နေရာချင်းတင်ဆက်မှုများ၊ အထူးဝန်ဆောင်မှုများကို **သင့်ရွေးချယ်မှုအတိုင်း** အသိပေးရန် အသုံးပြုနိုင်သည် — စျေးကွက်ကန့်သတ်ချက်များကို များပြီးအားဖြင့် **opt-out** လုပ်နိုင်သည်။",
+      "ဒေတာကို **ဝန်ဆောင်မှုပေးသူများ** နှင့်စာချုပ်ဖြင့်သာ မျှဝေကာ **ရောင်းချခြင်း မပြုလုပ်ပါ**။ အသေးစိတ်အတွက် ဘဏ်၏ **တရားဝင် Privacy Policy** ကို App/Website ထဲတွင် ကြည့်ပါ။"
+    ]
+  },
+  "safety_notes": [
+    "Do not share personal or account details here.",
+    "For access/erasure requests, use the bank’s official privacy channel."
+  ]
+},
+    {
       "intent": "device_security",
       "patterns": [
         "lost phone with banking app",

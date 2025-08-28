@@ -1,64 +1,27 @@
 # app/engine/rule_engine.py
 from __future__ import annotations
+
 import json
+import os
 import re
-from typing import Any, Dict, List, Optional, Tuple
 from difflib import SequenceMatcher
-
-from app.nlp.lang import normalize as _normalize  # handles Myanmar variants
-
-# ---------------------------------------------------------------------
-# Matching helpers (single source of truth)
-# ---------------------------------------------------------------------
-def _prep(text: str) -> str:
-    return _normalize(text or "")
-
-def _score_hit(text_norm: str, patt: str) -> float:
-    """Regex/contains score. 'text_norm' must already be normalized."""
-    try:
-        if re.search(patt, text_norm, flags=re.I):
-            return 1.0
-    except re.error:
-        # invalid regex → fallback to substring contains
-        if patt.lower() in text_norm.lower():
-            return 0.8
-    return 0.0
-
-def _fuzzy(a: str, b: str) -> float:
-    """Very light fuzzy match using normalized inputs."""
-    return SequenceMatcher(None, _prep(a), _prep(b)).ratio()
-
-def _candidates(entries: List[Dict[str, Any]], text: str) -> List[Tuple[str, float, Dict[str, Any]]]:
-    """Return [(intent, score, entry), ...] sorted by score desc."""
-    tnorm = _prep(text)
-    scored: List[Tuple[str, float, Dict[str, Any]]] = []
-    for e in entries:
-        patt = e.get("patterns", []) or []
-        syns = e.get("synonyms", []) or []
-        s = 0.0
-        for p in patt:
-            s += _score_hit(tnorm, p)
-        for p in syns:
-            s += _score_hit(tnorm, p) * 0.6
-        # gentle fuzzy if nothing hit
-        if s == 0.0 and patt:
-            for p in patt[:3]:
-                s = max(s, _fuzzy(tnorm, p) * 0.6)
-        if s > 0:
-            e["matched"] = ", ".join((patt[:2] + syns[:2])[:4])
-            scored.append((e.get("intent") or "", s, e))
-    scored.sort(key=lambda x: x[1], reverse=True)
-    return scored
+from typing import Any, Dict, List, Optional, Tuple
 
 # ---------------------------------------------------------------------
-# Language helper (keeps working even if nlp module is missing)
+# Normalization / language helpers
 # ---------------------------------------------------------------------
 try:
-    from app.nlp.lang import detect_language as _detect_language  # type: ignore
-except Exception:  # fallback if import not available
+    from app.nlp.lang import normalize as _normalize  # Myanmar/Unicode normalizer
+except Exception:
+    def _normalize(text: str) -> str:
+        return (text or "").strip()
+
+try:
+    from app.nlp.lang import detect_language as _detect_language
+except Exception:
     def _detect_language(text: str, hint: Optional[str] = None) -> str:
-        # naive: if Myanmar Unicode chars present → Burmese
         return "my" if any("\u1000" <= ch <= "\u109F" for ch in (text or "")) else (hint or "en")
+
 
 def detect_language(text: str, hint: Optional[str] = None) -> str:
     try:
@@ -66,18 +29,112 @@ def detect_language(text: str, hint: Optional[str] = None) -> str:
     except Exception:
         return "my" if any("\u1000" <= ch <= "\u109F" for ch in (text or "")) else (hint or "en")
 
+
+def _prep(text: str) -> str:
+    return _normalize(text or "")
+
+
+# ---------------------------------------------------------------------
+# Scoring helpers
+# ---------------------------------------------------------------------
+RULE_MIN_SCORE = float(os.environ.get("RULE_MIN_SCORE", "0.82"))  # global floor
+
+def _score_hit(text_norm: str, patt: str) -> float:
+    """
+    Regex/contains score. 'text_norm' must already be normalized.
+    If pattern isn't a valid regex, fallback to substring.
+    """
+    try:
+        if re.search(patt, text_norm, flags=re.I):
+            return 1.0
+    except re.error:
+        if patt.lower() in text_norm.lower():
+            return 0.8
+    return 0.0
+
+
+def _fuzzy(a: str, b: str) -> float:
+    """Very light fuzzy match on normalized strings."""
+    return SequenceMatcher(None, _prep(a), _prep(b)).ratio()
+
+
+def _candidates(entries: List[Dict[str, Any]], text: str) -> List[Tuple[str, float, Dict[str, Any]]]:
+    """
+    Score each KB entry vs 'text' and return sorted candidates:
+    [(intent, score, entry), ...] (descending).
+    """
+    tnorm = _prep(text)
+    out: List[Tuple[str, float, Dict[str, Any]]] = []
+
+    for e in entries:
+        patt = e.get("patterns") or []
+        syns = e.get("synonyms") or []
+
+        score = 0.0
+        for p in patt:
+            score += _score_hit(tnorm, p)
+        for s in syns:
+            score += _score_hit(tnorm, s) * 0.6  # synonyms weigh less
+
+        # Gentle fuzzy fallback only if nothing hit;
+        # require very high similarity and dampen weight.
+        if score == 0.0 and patt:
+            best = 0.0
+            for p in patt[:3]:
+                best = max(best, _fuzzy(tnorm, p))
+            if best >= 0.92:
+                score = best * 0.4
+
+        if score > 0.0:
+            e["matched"] = ", ".join((patt[:2] + syns[:2])[:4])
+            out.append((e.get("intent") or "", float(score), e))
+
+    out.sort(key=lambda x: x[1], reverse=True)
+    return out
+
+
+# ---------------------------------------------------------------------
+# Answer rendering
+# ---------------------------------------------------------------------
+def _normalize_answers(ans: Any, lang: str) -> List[str]:
+    if ans is None:
+        return []
+    if isinstance(ans, str):
+        return [ans]
+    if isinstance(ans, list):
+        return [str(x) for x in ans if x]
+    if isinstance(ans, dict):
+        v = ans.get(lang) or ans.get("en") or ans.get("my")
+        if v is None:
+            return []
+        if isinstance(v, str):
+            return [v]
+        if isinstance(v, list):
+            return [str(x) for x in v if x]
+    return []
+
+
+def _render_answer(ans: Any, lang: str) -> str:
+    parts = _normalize_answers(ans, lang)
+    if not parts:
+        return ""
+    if len(parts) == 1:
+        return parts[0]
+    return "\n".join(f"• {p}" for p in parts)
+
+
 # ---------------------------------------------------------------------
 # Rule Engine
 # ---------------------------------------------------------------------
 class RuleEngine:
     """
     Tiny matcher over knowledge.json.
-    Expects either key "intents" (preferred) or legacy "entries".
-    Each entry can include:
+
+    KB entry fields:
       - intent (str)
       - patterns (list[str])
       - synonyms (list[str], optional)
-      - answers: str | list[str] | {lang:str|list[str]}
+      - answers: str | list[str] | {lang: str|list[str]}
       - safety_notes (list[str], optional)
       - flow: {lang: list[str]}, optional
       - escalation: {lang: str}, optional
@@ -89,7 +146,7 @@ class RuleEngine:
         self.meta: Dict[str, Any] = {}
         self.reload()
 
-    # ---- public API ----
+    # Public API -------------------------------------------------------
     def reload(self) -> None:
         try:
             with open(self.path, "r", encoding="utf-8") as f:
@@ -108,21 +165,16 @@ class RuleEngine:
     def trace(self, message: str, lang_hint: Optional[str] = None, top_k: int = 8) -> Dict[str, Any]:
         lang = detect_language(message, hint=lang_hint)
         cands = _candidates(self.entries, message)
-        out = []
-        for intent, score, entry in cands[:top_k]:
-            out.append({
-                "intent": intent,
-                "score": round(score, 3),
-                "matched": entry.get("matched", ""),
-                "has_flow": bool(entry.get("flow")),
-                "has_escalation": bool(entry.get("escalation")),
-            })
-        return {"language": lang, "candidates": out}
+        view = [{
+            "intent": i,
+            "score": round(s, 3),
+            "matched": e.get("matched", ""),
+            "has_flow": bool(e.get("flow")),
+            "has_escalation": bool(e.get("escalation")),
+        } for i, s, e in cands[:top_k]]
+        return {"language": lang, "candidates": view}
 
     def kb_context(self, message: str, lang_hint: Optional[str] = None, top_k: int = 5) -> List[str]:
-        """
-        Return up to top_k localized answer snippets for use in AI fallback prompts.
-        """
         lang = detect_language(message, hint=lang_hint)
         cands = _candidates(self.entries, message)
         out: List[str] = []
@@ -137,10 +189,10 @@ class RuleEngine:
         message: str,
         lang_hint: Optional[str] = None,
         *,
-        min_confidence: float = 0.0,   # gate weak matches for AI fallback
+        min_confidence: Optional[float] = None,
     ) -> Dict[str, Any]:
         """
-        Returns a dict:
+        Return:
           {
             "intent": str|None,
             "answer": str,
@@ -158,9 +210,17 @@ class RuleEngine:
 
         intent, score, entry = cands[0]
 
-        # Treat low scores as "no match" so the router can use AI.
-        if min_confidence and float(score) < float(min_confidence):
-            return {"intent": None, "answer": "", "confidence": float(score), "matched": entry.get("matched", ""), "safety_notes": []}
+        # Apply threshold (env floor or caller override)
+        floor = RULE_MIN_SCORE if min_confidence is None else max(RULE_MIN_SCORE, float(min_confidence))
+        if float(score) < floor:
+            # treat as no-match so the router can use AI fallback
+            return {
+                "intent": None,
+                "answer": "",
+                "confidence": float(score),
+                "matched": entry.get("matched", ""),
+                "safety_notes": [],
+            }
 
         answer = _render_answer(entry.get("answers"), lang)
 
@@ -181,42 +241,14 @@ class RuleEngine:
             "escalation": esc,
         }
 
-# ---------------------------------------------------------------------
-# Answer rendering helpers
-# ---------------------------------------------------------------------
-def _normalize_answers(ans: Any, lang: str) -> List[str]:
-    if ans is None:
-        return []
-    if isinstance(ans, str):
-        return [ans]
-    if isinstance(ans, list):
-        return [str(x) for x in ans if x]
-    if isinstance(ans, dict):
-        v = ans.get(lang) or ans.get("en") or ans.get("my")
-        if v is None:
-            return []
-        if isinstance(v, str):
-            return [v]
-        if isinstance(v, list):
-            return [str(x) for x in v if x]
-    return []
-
-def _render_answer(ans: Any, lang: str) -> str:
-    parts = _normalize_answers(ans, lang)
-    if not parts:
-        return ""
-    if len(parts) == 1:
-        return parts[0]
-    return "\n".join(f"• {p}" for p in parts)
 
 # ---------------------------------------------------------------------
-# Scope Check (used by routers to allow/deny/redirect)
+# Scope Check (used by API routers)
 # ---------------------------------------------------------------------
-# The scope is broad: banking + cybersecurity for both customers & employees.
-# We still tag personal account actions as "sensitive" so the router can
-# respond with a polite redirect (no account operations).
+# Broad banking + cybersecurity scope. Personal account actions are tagged
+# as "sensitive" so the router can politely redirect without doing account ops.
 
-# -- Banking domain (EN) --
+# Banking domain (EN/MY)
 _BANKING_GENERAL_EN = [
     r"\bbank(s)?\b", r"\bbranch(es)?\b", r"\baccount(s)?\b", r"\bstatement(s)?\b",
     r"\bfee(s)?\b", r"\binterest\b", r"\bsavings?\b", r"\bcurrent account\b",
@@ -227,8 +259,6 @@ _BANKING_GENERAL_EN = [
     r"\bforeign exchange\b", r"\bfx\b", r"\bcheque|checkbook|chequebook\b",
     r"\boverdraft\b",
 ]
-
-# -- Banking domain (MY) --
 _BANKING_GENERAL_MY = [
     r"ဘဏ်", r"ဘဏ်ခွဲ", r"အကောင့်", r"စာရင်းပြ", r"ကြေးငွေ", r"အတိုး",
     r"သိုလှောင်ငွေ|အစုဆောင်း", r"လက်ကျန်", r"ငွေသွင်း|ငွေထုတ်",
@@ -237,7 +267,7 @@ _BANKING_GENERAL_MY = [
     r"လက်မှတ်စာရင်း|cheque|check",
 ]
 
-# -- Digital channels / payments / cards (EN) --
+# Digital channels / payments / cards
 _CHANNELS_EN = [
     r"\bonline banking\b", r"\bmobile banking\b", r"\bapp\b", r"\bnetbank\b",
     r"\bdebit card\b", r"\bcredit card\b", r"\bvirtual card\b", r"\batm\b",
@@ -246,15 +276,15 @@ _CHANNELS_EN = [
     r"\bcharge(s)?\b", r"\bauto[- ]debit|standing order\b",
     r"\balert(s)?\b|\bnotification(s)?\b",
 ]
-
-# -- Digital channels / payments / cards (MY) --
 _CHANNELS_MY = [
-    r"အွန်လိုင်း ဘဏ်", r"မိုဘိုင်း ဘဏ်", r"အက်ပ်", r"ကတ်|ဒက်ဘစ်ကတ်|ကရက်ဒစ်ကတ်",
-    r"ATM", r"POS", r"ကုန်သည်", r"QR", r"ပြန်လည်တင်သွင်း|ပြန်ညှိ",
+    r"အွန်လိုင်း ဘဏ်", r"မိုဘိုင်း ဘဏ်", r"အက်ပ်",
+    r"ကတ်|ဒက်ဘစ်ကတ်|ကရက်ဒစ်ကတ်",
+    r"ATM", r"POS", r"ကုန်သည်", r"QR",
+    r"ပြန်လည်တင်သွင်း|ပြန်ညှိ",
     r"Auto[- ]debit|အလိုအလျောက် ငွေဖြတ်", r"အသိပေးချက်",
 ]
 
-# -- Cybersecurity (EN) --
+# Cybersecurity
 _SECURITY_EN = [
     r"phish|smish|vish|scam|fraud|spoof|impersonat",
     r"\botp\b|\bpin\b|\b2fa\b|\bmfa\b",
@@ -267,8 +297,6 @@ _SECURITY_EN = [
     r"privacy|gdpr|ccpa|compliance|audit|policy|kyc",
     r"incident response|soc|siem|edr|dlp|removable media|usb|data loss",
 ]
-
-# -- Cybersecurity (MY) --
 _SECURITY_MY = [
     r"လိမ်|လှည့်စား|လိမ်လည်",
     r"OTP|PIN|2FA|အတည်ပြု ကုဒ်",
@@ -282,7 +310,7 @@ _SECURITY_MY = [
     r"Incident Response|SOC|EDR|DLP|USB|အချက်အလက် ဆုံးရှုံး",
 ]
 
-# -- Employee-focused (EN & MY) --
+# Audience hints
 _EMPLOYEE_EN = [
     r"\bemployee\b|\bstaff\b|\bteller\b|\bcsr\b|\bagent\b",
     r"policy|procedure|sop|playbook|handbook|standard operating",
@@ -296,7 +324,6 @@ _EMPLOYEE_MY = [
     r"USB|external drive|BYOD",
 ]
 
-# -- Customer-focused (EN & MY) --
 _CUSTOMER_EN = [
     r"statement|fee|limit|alert|notification|how to|enable|disable|turn on|turn off",
     r"card block|freeze|unfreeze|dispute|chargeback|unknown transaction|refund",
@@ -305,16 +332,16 @@ _CUSTOMER_EN = [
 _CUSTOMER_MY = [
     r"စာရင်းပြ|ကြေးငွေ|ကန့်သတ်|အသိပေးချက်|ဘယ်လို|ဖွင့်|ပိတ်",
     r"ကတ်ပိတ်|အကောင့် ပိတ်|မဟုတ်သော လုပ်ဆောင်မှု|ပြန်အမ်း|တိုင်ကြား",
-    r"ကိုယ်ရေး အချက်အလက် တောင်းဆို|ဖျက်|မမျှဝေ​ចား",
+    r"ကိုယ်ရေး အချက်အလက် တောင်းဆို|ဖျက်|မမျှဝေ",
 ]
 
-# -- Obvious out-of-scope topics (safe deny) --
+# Out-of-scope denylist
 _DENY = [
     r"\b(recipe|cooking|football|nba|weather|flight|hotel|programming|python|javascript|homework|math|calculus)\b",
     r"မိုးလေဝသ|စားချက်|ဘောလုံး|ခရီး|ဟိုတယ်|ပရိုဂရမ်|သင်ခန်းစာ",
 ]
 
-# -- Sensitive account actions (still allowed but redirected) --
+# Sensitive account actions (redirect only)
 _SENSITIVE_ACCOUNT_EN = (
     "balance", "transfer", "send money", "wire", "deposit", "withdraw",
     "statement", "loan", "investment", "kyc", "update details", "check my account",
@@ -333,18 +360,19 @@ def _any_phrase(text: str, phrases: tuple[str, ...]) -> bool:
     t = text.casefold()
     return any(ph.casefold() in t for ph in phrases)
 
+
 def scope_check(user_text: str, *, rules: Optional["RuleEngine"] = None) -> Tuple[bool, str, str, str]:
     """
     Returns: (in_scope: bool, lang: 'en'|'my', reason: str, tag: 'normal'|'sensitive'|'deny')
-      - 'sensitive' → personal account actions; router should answer with
-        the 'personal_account_scope' intent (polite redirect).
+    - 'sensitive' → personal account actions; router should answer with the
+      'personal_account_scope' intent (polite redirect).
     """
     lang = detect_language(user_text) or "en"
     t = (user_text or "").strip()
     if not t:
         return False, lang, "empty", "deny"
 
-    # 1) If the knowledge base already matches, it's in scope.
+    # 1) KB direct match → in scope
     if rules is not None:
         m = rules.match(t, lang_hint=lang)
         if m and m.get("intent"):
@@ -356,7 +384,7 @@ def scope_check(user_text: str, *, rules: Optional["RuleEngine"] = None) -> Tupl
     if _any_regex(_DENY, t):
         return False, lang, "denylist", "deny"
 
-    # 3) Broad allow across BANKING + CYBERSEC (customers & employees)
+    # 3) Broad allow across BANKING + CYBERSEC
     allow = (
         _any_regex(_BANKING_GENERAL_EN, t) or _any_regex(_BANKING_GENERAL_MY, t) or
         _any_regex(_CHANNELS_EN, t) or _any_regex(_CHANNELS_MY, t) or
@@ -368,7 +396,7 @@ def scope_check(user_text: str, *, rules: Optional["RuleEngine"] = None) -> Tupl
         tag = "sensitive" if (_any_phrase(t, _SENSITIVE_ACCOUNT_EN) or _any_phrase(t, _SENSITIVE_ACCOUNT_MY)) else "normal"
         return True, lang, "broad_allow", tag
 
-    # 4) Soft allow for very general banking/security queries & greetings
+    # 4) Soft allow for general banking/security queries & greetings
     if re.search(r"\b(help|hello|hi|what can you do|bank|security)\b", t, flags=re.I) or ("ဘဏ်" in t):
         return True, lang, "soft_allow", "normal"
 
