@@ -3,27 +3,29 @@ from __future__ import annotations
 import json
 import re
 from typing import Any, Dict, List, Optional, Tuple
+from difflib import SequenceMatcher
 
-from app.nlp.lang import normalize as _normalize  # normalize (handles Myanmar variants)
+from app.nlp.lang import normalize as _normalize  # handles Myanmar variants
 
-# ---------- matching helpers (keep these; do NOT redefine later) ----------
+# ---------------------------------------------------------------------
+# Matching helpers (single source of truth)
+# ---------------------------------------------------------------------
 def _prep(text: str) -> str:
     return _normalize(text or "")
 
-def _score_hit(text: str, patt: str) -> float:
-    """Regex/contains score. 'text' must already be normalized."""
+def _score_hit(text_norm: str, patt: str) -> float:
+    """Regex/contains score. 'text_norm' must already be normalized."""
     try:
-        if re.search(patt, text, flags=re.I):
+        if re.search(patt, text_norm, flags=re.I):
             return 1.0
     except re.error:
         # invalid regex → fallback to substring contains
-        if patt.lower() in text.lower():
+        if patt.lower() in text_norm.lower():
             return 0.8
     return 0.0
 
 def _fuzzy(a: str, b: str) -> float:
-    """Very light fuzzy match with normalized inputs."""
-    from difflib import SequenceMatcher
+    """Very light fuzzy match using normalized inputs."""
     return SequenceMatcher(None, _prep(a), _prep(b)).ratio()
 
 def _candidates(entries: List[Dict[str, Any]], text: str) -> List[Tuple[str, float, Dict[str, Any]]]:
@@ -47,10 +49,10 @@ def _candidates(entries: List[Dict[str, Any]], text: str) -> List[Tuple[str, flo
             scored.append((e.get("intent") or "", s, e))
     scored.sort(key=lambda x: x[1], reverse=True)
     return scored
-# -------------------------------------------------------------------------
 
-
-# --- Language helper (keeps working even if nlp module is missing) ---
+# ---------------------------------------------------------------------
+# Language helper (keeps working even if nlp module is missing)
+# ---------------------------------------------------------------------
 try:
     from app.nlp.lang import detect_language as _detect_language  # type: ignore
 except Exception:  # fallback if import not available
@@ -58,53 +60,15 @@ except Exception:  # fallback if import not available
         # naive: if Myanmar Unicode chars present → Burmese
         return "my" if any("\u1000" <= ch <= "\u109F" for ch in (text or "")) else (hint or "en")
 
-
 def detect_language(text: str, hint: Optional[str] = None) -> str:
     try:
         return _detect_language(text, hint=hint)
     except Exception:
         return "my" if any("\u1000" <= ch <= "\u109F" for ch in (text or "")) else (hint or "en")
 
-
-# ---------- follow-up resolver ("number 2" / "ဒုတိယ" / "နံပါတ် ၂") ----------
-_MM_DIGITS = str.maketrans("၀၁၂၃၄၅၆၇၈၉", "0123456789")
-_ORD_MAP = {"first": 1, "1st": 1, "second": 2, "2nd": 2, "third": 3, "3rd": 3, "fourth": 4, "4th": 4,
-            "ပထမ": 1, "ဒုတိယ": 2, "တတိယ": 3, "စတုတ္ထ": 4}
-
-def _extract_index(text: str) -> int | None:
-    s = _prep(text).translate(_MM_DIGITS)
-    m = re.search(r"(?:no\.?|number|item|#)\s*(\d+)|\b(1st|2nd|3rd|4th|first|second|third|fourth)\b", s, re.I)
-    if not m:
-        m = re.search(r"(?:နံပါတ်|အမှတ်)\s*(\d+)|\b(ပထမ|ဒုတိယ|တတိယ|စတုတ္ထ)\b", s, re.I)
-    if not m:
-        return None
-    g = next((x for x in m.groups() if x), None)
-    if not g:
-        return None
-    if g.isdigit():
-        return int(g)
-    return _ORD_MAP.get(g.lower())
-
-# hold the last structured list (very light state)
-_last_list: list[dict] | None = None
-
-def set_last_list(items: list[dict] | None):
-    global _last_list
-    _last_list = items
-
-def resolve_followup(user_text: str) -> str | None:
-    idx = _extract_index(user_text)
-    if not idx or not _last_list or idx < 1 or idx > len(_last_list):
-        return None
-    it = _last_list[idx - 1]
-    title = it.get("title", "")
-    detail = it.get("detail") or it.get("summary") or ""
-    return f"{idx}. {title} — details:\n{detail}"
-
-
-# =========================
-# ===== Rule Engine =======
-# =========================
+# ---------------------------------------------------------------------
+# Rule Engine
+# ---------------------------------------------------------------------
 class RuleEngine:
     """
     Tiny matcher over knowledge.json.
@@ -155,7 +119,26 @@ class RuleEngine:
             })
         return {"language": lang, "candidates": out}
 
-    def match(self, message: str, lang_hint: Optional[str] = None) -> Dict[str, Any]:
+    def kb_context(self, message: str, lang_hint: Optional[str] = None, top_k: int = 5) -> List[str]:
+        """
+        Return up to top_k localized answer snippets for use in AI fallback prompts.
+        """
+        lang = detect_language(message, hint=lang_hint)
+        cands = _candidates(self.entries, message)
+        out: List[str] = []
+        for _, _, entry in cands[:top_k]:
+            s = _render_answer(entry.get("answers"), lang)
+            if s:
+                out.append(s)
+        return out
+
+    def match(
+        self,
+        message: str,
+        lang_hint: Optional[str] = None,
+        *,
+        min_confidence: float = 0.0,   # gate weak matches for AI fallback
+    ) -> Dict[str, Any]:
         """
         Returns a dict:
           {
@@ -174,6 +157,11 @@ class RuleEngine:
             return {"intent": None, "answer": "", "confidence": 0.0, "matched": "", "safety_notes": []}
 
         intent, score, entry = cands[0]
+
+        # Treat low scores as "no match" so the router can use AI.
+        if min_confidence and float(score) < float(min_confidence):
+            return {"intent": None, "answer": "", "confidence": float(score), "matched": entry.get("matched", ""), "safety_notes": []}
+
         answer = _render_answer(entry.get("answers"), lang)
 
         flow = None
@@ -193,8 +181,9 @@ class RuleEngine:
             "escalation": esc,
         }
 
-
-# ---- answer rendering helpers (kept; duplicates removed) ----
+# ---------------------------------------------------------------------
+# Answer rendering helpers
+# ---------------------------------------------------------------------
 def _normalize_answers(ans: Any, lang: str) -> List[str]:
     if ans is None:
         return []
@@ -220,9 +209,9 @@ def _render_answer(ans: Any, lang: str) -> str:
         return parts[0]
     return "\n".join(f"• {p}" for p in parts)
 
-# =========================
-# ===== Scope Check =======
-# =========================
+# ---------------------------------------------------------------------
+# Scope Check (used by routers to allow/deny/redirect)
+# ---------------------------------------------------------------------
 # The scope is broad: banking + cybersecurity for both customers & employees.
 # We still tag personal account actions as "sensitive" so the router can
 # respond with a polite redirect (no account operations).

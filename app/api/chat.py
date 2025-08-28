@@ -10,7 +10,7 @@ import regex as re  # URL detection
 
 from app.models import ChatRequest, ChatResponse, Reasoning
 from app.api.helpers import (
-    rules, ai, redact, detect_language, scams,   # scams added
+    rules, ai, redact, detect_language, scams,
     out_of_scope, sensitive_redirect, sess_key, is_followup,
     rewrite_with_ai, get_openai_client, SYSTEM_PROMPT, OPENAI_MODEL,
     SESS, log_event,
