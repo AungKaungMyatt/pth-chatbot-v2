@@ -6,6 +6,11 @@ from collections import deque
 from typing import List
 import os, time, re
 
+from app.engine.password_strength import (
+    is_password_question, extract_password_candidates,
+    format_assessment, wants_examples, generate_examples
+)
+
 from app.models import ChatRequest, ChatResponse, Reasoning
 from app.api.helpers import (
     rules, ai, redact, detect_language,
@@ -36,56 +41,86 @@ def wants_steps(msg: str, lang: str) -> bool:
         return any(h in t for h in STEP_HINTS_MY)
     return any(h in t for h in STEP_HINTS_EN)
 
-
 # ======================================================================
 # STREAMING
 # ======================================================================
 @router.post("/chat/stream")
 async def chat_stream(req: ChatRequest, request: Request):
+    # ---- Scope gate ----
     from app.engine.rule_engine import scope_check
     in_scope, lang_gate, scope_reason, scope_tag = scope_check(req.message, rules=rules)
     if not in_scope:
         return StreamingResponse(iter([out_of_scope(lang_gate)]), media_type="text/plain")
 
+    # Language
     lang = detect_language(req.message, hint=getattr(req, "lang_hint", None))
 
-    # Sensitive redirect (no banner)
+    # ---- Dynamic password strength check (runs BEFORE rules) ----
+    if is_password_question(req.message, lang):
+        cands = extract_password_candidates(req.message)
+        if cands:
+            text = "\n\n".join(format_assessment(pw, lang) for pw in cands)
+        else:
+            examples = generate_examples(3)
+            if lang == "my":
+                text = (
+                    "စကားဝှက်အားကို စစ်ဆေးရန် စကားဝှက်ကို (“……”) အတွင်းရေးပေးပါ။ ဥပမာများ:\n"
+                    + "\n".join(f"• {e}" for e in examples)
+                )
+            else:
+                text = (
+                    'To check strength, send your password in quotes (e.g., "MyP@ss..."). Examples:\n'
+                    + "\n".join(f"• {e}" for e in examples)
+                )
+        return StreamingResponse(iter([text]), media_type="text/plain")
+
+    # Optional: users ask for password EXAMPLES explicitly
+    if wants_examples(req.message, lang):
+        examples = generate_examples(3)
+        text = "\n".join(f"{i+1}. {p}" for i, p in enumerate(examples))
+        return StreamingResponse(iter([text]), media_type="text/plain")
+
+    # ---- Sensitive redirect (no banner) ----
     if scope_tag == "sensitive":
         return StreamingResponse(iter([sensitive_redirect(lang)]), media_type="text/plain")
 
-    # 1) Quick link-safety short-circuit
+    # ---- Quick link-safety short-circuit ----
     lower_msg = (req.message or "").lower()
     if URL_RE.search(req.message) or (
-        ("link" in lower_msg and "safe" in lower_msg) or
-        ("လင့်" in lower_msg and ("အန္တရာယ်" in lower_msg or "လုံခြုံ" in lower_msg))
+        ("link" in lower_msg and "safe" in lower_msg)
+        or ("လင့်" in lower_msg and ("အန္တရာယ်" in lower_msg or "လုံခြုံ" in lower_msg))
     ):
         res = scams.analyze_text(req.message, lang_hint=lang)
         if lang == "my":
-            summary = "အန္တရာယ်အဆင့်: " + res["risk_level"] + "\n" + "\n".join(f"• {f['rule']}: {f['detail']}" for f in res["findings"][:5])
+            summary = "အန္တရာယ်အဆင့်: " + res["risk_level"] + "\n" + "\n".join(
+                f"• {f['rule']}: {f['detail']}" for f in res["findings"][:5]
+            )
         else:
-            summary = "Risk level: " + res["risk_level"] + "\n" + "\n".join(f"• {f['rule']}: {f['detail']}" for f in res["findings"][:5])
+            summary = "Risk level: " + res["risk_level"] + "\n" + "\n".join(
+                f"• {f['rule']}: {f['detail']}" for f in res["findings"][:5]
+            )
         out = redact(summary + ("\n\n" + res.get("advice", "") if res.get("advice") else ""))
         return StreamingResponse(iter([out]), media_type="text/plain")
 
-    # 2) Session
+    # ---- Session & history ----
     key = sess_key(req, request)
     sess = SESS[key]
     sess["lang"] = lang
     sess["hist"].append(("user", req.message))
 
-    # 3) Rules
+    # ---- Rule match ----
     m = rules.match(req.message, lang_hint=lang)
     intent = m.get("intent")
     is_fup = is_followup(req.message, lang)
 
-    # --- Prefer direct KB answer on first turn ---
-    if intent and m.get("answer") and not is_fup and not wants_steps(req.message, lang):
+    # Prefer direct KB answer on first turn
+    if intent and m.get("answer") and not is_fup:
         text = m["answer"]
         sess["hist"].append(("assistant", text))
         return StreamingResponse(iter([text]), media_type="text/plain")
 
-    # --- Flow handling only when follow-up or user asked for steps ---
-    if intent and m.get("flow") and (is_fup or wants_steps(req.message, lang)):
+    # Flow handling (multi-step guidance)
+    if intent and m.get("flow"):
         steps: List[str] = m["flow"]
         if is_fup and sess.get("topic") == intent:
             sess["step"] = min(sess.get("step", 0) + 1, len(steps) - 1)
@@ -100,7 +135,7 @@ async def chat_stream(req: ChatRequest, request: Request):
         sess["hist"].append(("assistant", text))
         return StreamingResponse(iter([text]), media_type="text/plain")
 
-    # --- If no flow but follow-up, let AI continue SAME scenario briefly ---
+    # If no flow but follow-up, let AI continue the SAME scenario briefly
     if intent and is_fup and req.allow_ai_fallback:
         system = (
             "You are a banking/cybersecurity assistant. Continue the SAME troubleshooting scenario. "
@@ -108,14 +143,16 @@ async def chat_stream(req: ChatRequest, request: Request):
             "Return 1–2 next actions only, concise and specific. Never ask for OTP/PIN. Language: {lang}."
         ).format(lang=lang)
         try:
-            cont = await ai.answer_with_system(system=system, user_text=req.message, lang=lang, context=list(sess["hist"]))
+            cont = await ai.answer_with_system(
+                system=system, user_text=req.message, lang=lang, context=list(sess["hist"])
+            )
         except Exception:
             cont = None
         if cont:
             sess["hist"].append(("assistant", cont))
             return StreamingResponse(iter([cont]), media_type="text/plain")
 
-    # --- General streaming fallback (model) ---
+    # ---- General streaming fallback (model) ----
     client = get_openai_client()
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
@@ -127,10 +164,17 @@ async def chat_stream(req: ChatRequest, request: Request):
     async def gen():
         try:
             if client is None:
-                yield (m.get("answer") or "I’ll share general guidance only. If this involves your personal account, use the official bank app/website.")
+                yield (
+                    m.get("answer")
+                    or "I’ll share general guidance only. If this involves your personal account, use the official bank app/website."
+                )
             else:
                 stream = client.chat.completions.create(
-                    model=OPENAI_MODEL, messages=messages, temperature=0.2, max_tokens=max_tokens, stream=True
+                    model=OPENAI_MODEL,
+                    messages=messages,
+                    temperature=0.2,
+                    max_tokens=max_tokens,
+                    stream=True,
                 )
                 for event in stream:
                     delta = event.choices[0].delta.content or ""
@@ -146,7 +190,6 @@ async def chat_stream(req: ChatRequest, request: Request):
                 pass
 
     return StreamingResponse(gen(), media_type="text/plain")
-
 
 # ======================================================================
 # NON-STREAM
@@ -190,6 +233,32 @@ async def chat(req: ChatRequest, request: Request):
             reply=redact(reply),
             language=lang,
             reasoning=Reasoning(intent="link_check", confidence=0.95, matched="detector", safety_notes=[]),
+        )
+    
+    if is_password_question(req.message, lang):
+        cands = extract_password_candidates(req.message)
+        if cands:
+            reply = "\n\n".join(format_assessment(pw, lang) for pw in cands)
+        else:
+            examples = generate_examples(3)
+            if lang == "my":
+                reply = "စကားဝှက်အားကို စစ်ဆေးရန် စကားဝှက်ကို (“……”) အတွင်းရေးပေးပါ။ ဥပမာများ:\n" + "\n".join(f"• {e}" for e in examples)
+            else:
+                reply = "To check strength, send your password in quotes. Examples:\n" + "\n".join(f"• {e}" for e in examples)
+        return ChatResponse(
+            reply=redact(reply),
+            language=lang,
+            reasoning=Reasoning(intent="password_strength", confidence=0.99, matched="dynamic_pw", safety_notes=["Do not reuse passwords. Enable 2FA."]),
+        )
+
+    # Password example generator (non-stream)
+    if wants_examples(req.message, lang):
+        examples = generate_examples(3)
+        reply = "\n".join(f"{i+1}. {p}" for i, p in enumerate(examples))
+        return ChatResponse(
+            reply=redact(reply),
+            language=lang,
+            reasoning=Reasoning(intent="password_examples", confidence=0.99, matched="generator", safety_notes=["Use a password manager."])
         )
 
     # 2) Session / follow-up

@@ -62,6 +62,18 @@
       ]
     },
     {
+      "intent": "password_strength",
+      "patterns": [
+        "is my password strong",
+        "password strong?",
+        "စကားဝှက် အားကောင်း မလား"
+      ],
+      "answers": {
+        "en": "I'll check the strength of your password.",
+        "my": "သင့်စကားဝှက် အားကို စစ်ဆေးပေးမယ်။"
+      }
+    },
+    {
       "intent": "personal_account_scope",
       "patterns": [
         "check my balance",
@@ -94,10 +106,7 @@
         "Do not share personal/account data here.",
         "Never share OTP/PIN or full card numbers."
       ],
-      "examples": [
-        "Can you check my balance?",
-        "ငွေဘယ်လောက်ကျန်လဲ?"
-      ]
+      "examples": ["Can you check my balance?", "ငွေဘယ်လောက်ကျန်လဲ?"]
     },
     {
       "intent": "customer_phishing",
@@ -230,11 +239,7 @@
         "QR ဖြင့် ဝင်ရောက်",
         "qr code phishing"
       ],
-      "synonyms": [
-        "verify account by qr",
-        "qr code from email",
-        "poster qr"
-      ],
+      "synonyms": ["verify account by qr", "qr code from email", "poster qr"],
       "answers": {
         "en": "Treat QR codes like links—they can hide malicious URLs. Don’t scan from untrusted messages. For payments, verify the receiver’s name and start with a small test amount.",
         "my": "QR ကုဒ်ကို လင့်ခ်တစ်ခုလို ထင်ပါ — မကောင်းမှု URL များ ဖုံးကွယ်နိုင်သည်။ မယုံကြည်သော စာတို/မက်ဆေ့ချ်များမှ QR မစကင်ပါနှင့်။ ငွေပေးချေရာတွင် လက်ခံသူအမည် အတည်ပြုပြီး စမ်းသပ်ငွေနည်းနည်းဖြင့် စတင်ပါ။"
@@ -694,9 +699,7 @@
         "en": "Funds can appear ‘available’ before final clearing. Avoid checks from unknown sources. If a check later bounces, the credited money can be reversed.",
         "my": "Final Clearing မပြီးခင် ငွေ ‘ရရှိ’ သကဲ့သို့ မြင်နိုင်သည်။ မသိသောအရင်းအမြစ်မှ ချက်လက်မှတ်များကို ရှောင်ပါ။ နောက်ပိုင်း ချက်ပြန်စီးပါက ငွေ ပြန်ဖြုတ်နိုင်သည်။"
       },
-      "safety_notes": [
-        "Funds availability ≠ final clearance."
-      ]
+      "safety_notes": ["Funds availability ≠ final clearance."]
     },
     {
       "intent": "authentication_issues",
@@ -745,47 +748,47 @@
       ]
     },
     {
-  "intent": "how_bank_uses_personal_info",
-  "patterns": [
-    "how bank uses my personal information",
-    "how does the bank use my personal information",
-    "how bank uses customer data",
-    "why bank collects my data",
-    "what does the bank do with my data",
-    "how my personal information is used by bank",
-    "ဘဏ်က ကိုယ်ရေးအချက်အလက်တွေကို ဘယ်လို အသုံးပြုလဲ",
-    "ဘဏ်က ဒေတာကို ဘာအတွက် သုံးလဲ",
-    "ဘဏ် အချက်အလက် အသုံးပြုမှု",
-    "ကိုယ်ရေး ဒေတာ ဘဏ် သုံးပုံ"
-  ],
-  "synonyms": [
-    "data usage by bank",
-    "customer data use",
-    "privacy policy summary",
-    "ပရိုက်ဗေဆီး မူဝါဒ",
-    "ဒေတာ သုံးပုံသုံးနည်း"
-  ],
-  "answers": {
-    "en": [
-      "Banks use personal information to **provide services and support** (open/maintain accounts, process payments, verify identity under KYC/AML).",
-      "To **protect customers and the bank** (fraud monitoring, security, incident investigation).",
-      "To **meet legal/regulatory duties** (records, reporting, sanctions screening).",
-      "To **improve products and communicate** about features or offers **according to your choices**; you can usually opt out of marketing.",
-      "Data may be shared with **service providers** under contracts; reputable banks **do not sell** your personal data. For exact details, check your bank’s **official privacy policy** in the app/website."
-    ],
-    "my": [
-      "ဘဏ်များသည် ကိုယ်ရေးအချက်အလက်များကို **ဝန်ဆောင်မှုပေးရန်** (အကောင့်ဖွင့်/ထိန်းသိမ်း, ငွေပေးချေခြင်း, KYC/AML အတည်ပြုခြင်း) ဆောင်ရွက်ရာတွင် အသုံးပြုသည်။",
-      "**ဖောက်သည်များနှင့် ဘဏ်ကိုကာကွယ်ရန်** (Fraud စောင့်ကြည့်ခြင်း, လုံခြုံရေး, ဖြစ်ရပ်စုံစမ်းခြင်း) အသုံးပြုသည်။",
-      "**ဥပဒေ/အကြမ်းဖျဉ်းလိုအပ်ချက်များ** (မှတ်တမ်းထားခြင်း, အစီရင်ခံခြင်း, ပိတ်ချက်စစ်ဆေးခြင်း) ဖြည့်ဆည်းရန် အသုံးပြုသည်။",
-      "နေရာချင်းတင်ဆက်မှုများ၊ အထူးဝန်ဆောင်မှုများကို **သင့်ရွေးချယ်မှုအတိုင်း** အသိပေးရန် အသုံးပြုနိုင်သည် — စျေးကွက်ကန့်သတ်ချက်များကို များပြီးအားဖြင့် **opt-out** လုပ်နိုင်သည်။",
-      "ဒေတာကို **ဝန်ဆောင်မှုပေးသူများ** နှင့်စာချုပ်ဖြင့်သာ မျှဝေကာ **ရောင်းချခြင်း မပြုလုပ်ပါ**။ အသေးစိတ်အတွက် ဘဏ်၏ **တရားဝင် Privacy Policy** ကို App/Website ထဲတွင် ကြည့်ပါ။"
-    ]
-  },
-  "safety_notes": [
-    "Do not share personal or account details here.",
-    "For access/erasure requests, use the bank’s official privacy channel."
-  ]
-},
+      "intent": "how_bank_uses_personal_info",
+      "patterns": [
+        "how bank uses my personal information",
+        "how does the bank use my personal information",
+        "how bank uses customer data",
+        "why bank collects my data",
+        "what does the bank do with my data",
+        "how my personal information is used by bank",
+        "ဘဏ်က ကိုယ်ရေးအချက်အလက်တွေကို ဘယ်လို အသုံးပြုလဲ",
+        "ဘဏ်က ဒေတာကို ဘာအတွက် သုံးလဲ",
+        "ဘဏ် အချက်အလက် အသုံးပြုမှု",
+        "ကိုယ်ရေး ဒေတာ ဘဏ် သုံးပုံ"
+      ],
+      "synonyms": [
+        "data usage by bank",
+        "customer data use",
+        "privacy policy summary",
+        "ပရိုက်ဗေဆီး မူဝါဒ",
+        "ဒေတာ သုံးပုံသုံးနည်း"
+      ],
+      "answers": {
+        "en": [
+          "Banks use personal information to **provide services and support** (open/maintain accounts, process payments, verify identity under KYC/AML).",
+          "To **protect customers and the bank** (fraud monitoring, security, incident investigation).",
+          "To **meet legal/regulatory duties** (records, reporting, sanctions screening).",
+          "To **improve products and communicate** about features or offers **according to your choices**; you can usually opt out of marketing.",
+          "Data may be shared with **service providers** under contracts; reputable banks **do not sell** your personal data. For exact details, check your bank’s **official privacy policy** in the app/website."
+        ],
+        "my": [
+          "ဘဏ်များသည် ကိုယ်ရေးအချက်အလက်များကို **ဝန်ဆောင်မှုပေးရန်** (အကောင့်ဖွင့်/ထိန်းသိမ်း, ငွေပေးချေခြင်း, KYC/AML အတည်ပြုခြင်း) ဆောင်ရွက်ရာတွင် အသုံးပြုသည်။",
+          "**ဖောက်သည်များနှင့် ဘဏ်ကိုကာကွယ်ရန်** (Fraud စောင့်ကြည့်ခြင်း, လုံခြုံရေး, ဖြစ်ရပ်စုံစမ်းခြင်း) အသုံးပြုသည်။",
+          "**ဥပဒေ/အကြမ်းဖျဉ်းလိုအပ်ချက်များ** (မှတ်တမ်းထားခြင်း, အစီရင်ခံခြင်း, ပိတ်ချက်စစ်ဆေးခြင်း) ဖြည့်ဆည်းရန် အသုံးပြုသည်။",
+          "နေရာချင်းတင်ဆက်မှုများ၊ အထူးဝန်ဆောင်မှုများကို **သင့်ရွေးချယ်မှုအတိုင်း** အသိပေးရန် အသုံးပြုနိုင်သည် — စျေးကွက်ကန့်သတ်ချက်များကို များပြီးအားဖြင့် **opt-out** လုပ်နိုင်သည်။",
+          "ဒေတာကို **ဝန်ဆောင်မှုပေးသူများ** နှင့်စာချုပ်ဖြင့်သာ မျှဝေကာ **ရောင်းချခြင်း မပြုလုပ်ပါ**။ အသေးစိတ်အတွက် ဘဏ်၏ **တရားဝင် Privacy Policy** ကို App/Website ထဲတွင် ကြည့်ပါ။"
+        ]
+      },
+      "safety_notes": [
+        "Do not share personal or account details here.",
+        "For access/erasure requests, use the bank’s official privacy channel."
+      ]
+    },
     {
       "intent": "device_security",
       "patterns": [
@@ -825,9 +828,7 @@
         "en": "Turn on transaction alerts, review statements regularly, and report unauthorized activity to your bank as soon as possible for investigation.",
         "my": "လုပ်ဆောင်မှုအသိပေးချက်များ ဖွင့်ပါ၊ Statement များကို ပုံမှန်စစ်ဆေးပါ၊ ခွင့်ပြုချက်မရှိသော လုပ်ဆောင်ချက်တွေ့လျှင် ဘဏ်ထံ ချက်ချင်း တိုင်ကြားပါ။"
       },
-      "safety_notes": [
-        "Act quickly; keep dates and references when reporting."
-      ]
+      "safety_notes": ["Act quickly; keep dates and references when reporting."]
     },
     {
       "intent": "security_features",
@@ -845,9 +846,7 @@
         "en": "Enable all available security features: 2FA (prefer app over SMS), transaction alerts, and biometric login where supported.",
         "my": "ရရှိနိုင်သော လုံခြုံရေးအင်္ဂါရပ်များအားလုံးကို ဖွင့်ပါ — 2FA (SMS ထက် App သုံးရန်), လုပ်ဆောင်မှုအသိပေးချက်များ၊ ဇီဝမှတ်သားဝင်ရောက်မှု (ထောက်ပံ့ပါက)။"
       },
-      "safety_notes": [
-        "Prefer app-based authenticators over SMS."
-      ]
+      "safety_notes": ["Prefer app-based authenticators over SMS."]
     },
     {
       "intent": "malware_threats",
@@ -887,9 +886,7 @@
         "en": "Use your app/site privacy settings to limit data sharing and hide balances where available. Review third-party permissions regularly.",
         "my": "App/Website ၏ Privacy Settings တွင် အချက်အလက်မျှဝေမှုကို ကန့်သတ်ပြီး လက်ကျန်ဖုံးကွယ် ရနိုင်ပါသည် (ထောက်ပံ့ပါက)။ တတိယပါတီ ခွင့်ပြုချက်များကို ပုံမှန် စစ်ဆေးပါ။"
       },
-      "safety_notes": [
-        "Review app permissions regularly."
-      ]
+      "safety_notes": ["Review app permissions regularly."]
     },
     {
       "intent": "recovery_processes",
@@ -907,9 +904,7 @@
         "en": "Report to your bank immediately, collect evidence (dates, refs, messages), and follow guidance from the investigations team. Reimbursement depends on your case and policy.",
         "my": "ဘဏ်ထံ ချက်ချင်း တိုင်ကြားပါ၊ သက်သေများ (နေ့ရက်၊ ကိုးကားနံပါတ်၊ စာတို) ကို စုဆောင်းပါ၊ စုံစမ်းရေးအဖွဲ့၏ လမ်းညွှန်ချက်ကို လိုက်နာပါ။ ငွေပြန်အမ်းသည် ကိစ္စနှင့် မူဝါဒပေါ် မူတည်သည်။"
       },
-      "safety_notes": [
-        "Document everything (dates, refs, case IDs)."
-      ]
+      "safety_notes": ["Document everything (dates, refs, case IDs)."]
     },
     {
       "intent": "compliance_questions",
@@ -927,9 +922,7 @@
         "en": "Submit privacy/compliance requests through the bank’s official data privacy channel. Timelines vary by applicable laws and policy (often up to ~30 days).",
         "my": "Privacy/Compliance တောင်းဆိုမှုများကို ဘဏ်၏ တရားဝင် Data Privacy ချန်နယ်မှ တင်သွင်းပါ။ တုံ့ပြန်ချိန်များသည် သက်ဆိုင်ရာ ဥပဒေ နှင့် မူဝါဒအပေါ် မူတည်ပြီး (~၃၀ ရက်အထိ) ကွာခြားနိုင်သည်။"
       },
-      "safety_notes": [
-        "Verify identity before fulfilling requests."
-      ]
+      "safety_notes": ["Verify identity before fulfilling requests."]
     },
     {
       "intent": "technical_support",
@@ -949,16 +942,11 @@
         "en": "Clear cache/cookies, update your app/browser, and try again. If issues persist, contact support with your device model, OS version, and the exact error message.",
         "my": "Cache/Cookies ရှင်းပါ၊ App/Browser ကို Update လုပ်ပါ၊ ထပ်စမ်းပါ။ မဖြစ်သေးပါက ကိရိယာ မော်ဒယ်၊ OS ဗားရှင်းနှင့် အမှားစာသားအတိအကျဖြင့် Support သို့ ဆက်သွယ်ပါ။"
       },
-      "safety_notes": [
-        "Never share full passwords with support."
-      ]
+      "safety_notes": ["Never share full passwords with support."]
     },
     {
       "intent": "wallet_balance_decreasing",
-      "patterns": [
-        "kbzpay balance decreasing",
-        "ငွေလျော့နေ"
-      ],
+      "patterns": ["kbzpay balance decreasing", "ငွေလျော့နေ"],
       "answers": {
         "en": "Let’s check common causes and lock things down.",
         "my": "အများအားဖြင့် ဖြစ်တတ်သည့် အကြောင်းရင်းများကို စစ်ဆေးပြီး လုံခြုံရေး ချက်ချင်း တိုးပါစို့။"
@@ -995,10 +983,7 @@
         "en": "Banks won’t require a separate app to claim rewards. Use only the bank’s verified app from official stores and avoid APK files or links from messages.",
         "my": "လက်ဆောင်/ပွိုင့်ရယူရန် သီးခြား App ထည့်ရန် ဘဏ်မှ မတောင်းပါ။ တရားဝင် Store များမှ Verified App ကိုသာ သုံးပြီး APK ဖိုင်များနှင့် စာတိုလင့်ခ်များကို ရှောင်ပါ။"
       },
-      "safety_notes": [
-        "Do not sideload APKs.",
-        "Use official app stores only."
-      ]
+      "safety_notes": ["Do not sideload APKs.", "Use official app stores only."]
     },
     {
       "intent": "account_security_basics",
@@ -1025,10 +1010,7 @@
           "Statement များကို ပုံမှန် စစ်ဆေးပြီး မသိသော ကုန်ကျစရိတ်များကို ချက်ချင်း တိုင်ကြားပါ။"
         ]
       },
-      "safety_notes": [
-        "Prefer app-based 2FA.",
-        "Use a password manager."
-      ]
+      "safety_notes": ["Prefer app-based 2FA.", "Use a password manager."]
     },
     {
       "intent": "card_not_present_fraud",
@@ -1043,10 +1025,7 @@
         "en": "Prefer virtual/one-time cards if available. Don’t store card details on random sites. Turn on transaction alerts.",
         "my": "ဖြစ်နိုင်လျှင် Virtual/One-time ကတ်သုံးပါ။ မယုံကြည်ရသေးသော ဝဘ်ဆိုဒ်များတွင် ကတ်အချက်အလက် မသိမ်းပါနှင့်။ လုပ်ဆောင်မှု အသိပေးချက်များ ဖွင့်ပါ။"
       },
-      "safety_notes": [
-        "Enable transaction alerts.",
-        "Prefer virtual cards."
-      ]
+      "safety_notes": ["Enable transaction alerts.", "Prefer virtual cards."]
     },
     {
       "intent": "identity_theft_breach",
@@ -1062,10 +1041,7 @@
         "en": "Change passwords, enable 2FA, review recent transactions, and watch for new-login alerts. Ask your bank and mobile operator to add extra verification if sensitive IDs were exposed.",
         "my": "စကားဝှက်များ ပြောင်းပါ၊ 2FA ဖွင့်ပါ၊ လတ်တလော လုပ်ဆောင်ချက်များ စစ်ဆေးပါ၊ Login Alert များ စောင့်ကြည့်ပါ။ ကိုယ်ရေး ID များ洩露 ဖြစ်ပါက ဘဏ်နှင့် ဖုန်း Operator ထံ အတည်ပြုချက် ထပ်ထည့်စေပါ။"
       },
-      "safety_notes": [
-        "Rotate passwords.",
-        "Monitor transactions/alerts."
-      ]
+      "safety_notes": ["Rotate passwords.", "Monitor transactions/alerts."]
     },
     {
       "intent": "reporting_scam",
@@ -1080,10 +1056,7 @@
         "en": "Collect evidence (messages, numbers, links) and report to your bank immediately. If money was sent, request a freeze. Also report to local cybercrime/consumer protection.",
         "my": "သက်သေများ (စာတို၊ နံပါတ်၊ လင့်ခ်) စုဆောင်းပြီး ဘဏ်ထံ ချက်ချင်း တိုင်ကြားပါ။ ငွေ ပေးပို့ပြီးသားဆိုပါက Freeze တောင်းဆိုပါ။ ဒေသန္တရ ဆိုက်ဘာရာဇဝတ်မှု/စားသုံးသူကာကွယ်ရေးထံလည်း တိုင်ကြားပါ။"
       },
-      "safety_notes": [
-        "Act quickly if funds were sent.",
-        "Keep evidence."
-      ]
+      "safety_notes": ["Act quickly if funds were sent.", "Keep evidence."]
     },
     {
       "intent": "official_contact_verification",
@@ -1097,9 +1070,7 @@
         "en": "Find contact numbers inside the official app or website. Do not trust numbers shown in messages, images, or random sites.",
         "my": "တရားဝင် App သို့မဟုတ် ဝဘ်ဆိုဒ်တွင် ဆက်သွယ်ရန် နံပါတ်များကို ကြည့်ရှုပါ။ စာတို/ပုံ/မသိသောဝဘ်ဆိုဒ်များမှ နံပါတ်များကို မယုံကြည်ပါနှင့်။"
       },
-      "safety_notes": [
-        "Use official site/app only."
-      ]
+      "safety_notes": ["Use official site/app only."]
     },
     {
       "intent": "update_personal_info_requests",
@@ -1114,9 +1085,7 @@
         "en": "Do not upload KYC documents through random links/emails. Use the official app/website or visit a branch to update personal information.",
         "my": "မည်သူမဆို ပေးပို့သည့် လင့်ခ်/အီးမေးလ်များမှ KYC စာရွက်စာတမ်းများ မတင်ပါနှင့်။ ကိုယ်ရေးအချက်အလက် အပ်ဒိတ်အတွက် တရားဝင် App/Website သို့မဟုတ် ဘဏ်ခွဲသို့ သွားရောက် ပြုလုပ်ပါ။"
       },
-      "safety_notes": [
-        "Submit KYC only via official channels."
-      ]
+      "safety_notes": ["Submit KYC only via official channels."]
     },
     {
       "intent": "security_incident_reporting",
@@ -1175,11 +1144,7 @@
         "မိမိက breach ဖြစ်စေနိုင်",
         "လုံခြုံရေး အမှား လုပ်"
       ],
-      "synonyms": [
-        "accidental leak",
-        "mistake reporting",
-        "breach anxiety"
-      ],
+      "synonyms": ["accidental leak", "mistake reporting", "breach anxiety"],
       "answers": {
         "en": "It's normal to be cautious! Follow these simple rules: 1) When unsure, **ask your supervisor or Security Desk (ext. 1111)** 2) **Don’t click** unknown links/attachments 3) **Never share** your password 4) **Lock** your computer when away 5) **Report potential issues immediately** — we value proactive reporting over perfection. Everyone makes mistakes; what matters is how we handle them.",
         "my": "သတိထားတာက ကောင်းပါတယ်! အောက်ပါအချက်များကို လိုက်နာပါ — ၁) မသေချာလျှင် **မန်နေဂျာ သို့မဟုတ် Security Desk (ဖုန်း ၁၁၁၁)** ကို မေးပါ ၂) မသိသော လင့်ခ်/ပူးတွဲဖိုင်များကို **မနှိပ်ပါနှင့်** ၃) **စကားဝှက် မမျှဝေပါနှင့်** ၄) ထိုင်ခုံမှ အဝေးသွားသော်လည်း **ကွန်ပျူတာသော့ခတ်ပါ** ၅) **ဖြစ်နိုင်သော ပြဿနာများကို ချက်ချင်း တိုင်ကြားပါ** — ပြီးပြည့်စုံမှုထက် ကြိုတင်တိုင်ကြားခြင်းကို ကျွန်ုပ်တို့ တန်ဖိုးထားသည်။ လူတိုင်း အမှားရှိနိုင်သည်; အရေးကြီးတာက ဘယ်လို ကိုင်တွယ်သလဲပဲ ဖြစ်ပါတယ်။"
